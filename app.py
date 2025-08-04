@@ -105,7 +105,7 @@ def captcha():
 @app.route('/forgot-password', methods=['GET', 'POST'])
 def forgot_password():
     if request.method == 'POST':
-        email = request.form['email']
+        email = request.form.get('email')
         conn = get_db_connection()
         cur = conn.cursor()
         cur.execute("SELECT id FROM users WHERE email = %s", (email,))
@@ -181,10 +181,10 @@ def change_password():
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        email = request.form['email']
-        password = request.form['password']
-        role = request.form['role']
-        captcha_input = request.form['captcha']
+        email = request.form.get('email')
+        password = request.form.get('password')
+        role = request.form.get('role')
+        captcha_input = request.form.get('captcha')
 
         # CAPTCHA validation
         if captcha_input.upper() != session.get('captcha_text', ''):
