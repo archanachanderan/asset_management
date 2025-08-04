@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Add Asset</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.css" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+</head>
+
+<body class="bg-light">
+  <!-- Navbar -->
+  <header>
+    <nav class="navbar navbar-expand-lg navbar-light bg-white fixed-top shadow py-2">
+      <div class="container-fluid">
+        <p class="navbar-brand text-danger fw-bold fs-2 my-0 d-flex align-items-center">
+          <img src="{{ url_for('static', filename='images/logo.jpg') }}" alt="Logo" height="40" class="me-2">
+          SREE VENKATESHWARA ENTERPRISES
+        </p>
+        <div class="d-flex align-items-center">
+          <a class="btn btn-white me-2 fs-5 fw-bold py-2 px-4" href="{{ url_for('welcome') }}#product-frame">Product</a>
+          <a class="btn btn-white me-2 fs-5 fw-bold py-2 px-4" href="{{ url_for('welcome') }}#about-frame">About SVE</a>
+          <a class="btn btn-white me-2 fs-5 fw-bold py-2 px-4" href="{{ url_for('welcome') }}#contact-frame">Contact</a>
+          <a class="btn btn-white me-2 fs-5 fw-bold py-2 px-4" href="{{ url_for('login') }}?animate=true">Inventory</a>
+          {% if session.email %}
+            <div class="ms-3 d-flex align-items-center">
+            <i class="bi bi-person-circle fs-4 me-2"></i>
+            <span class="fw-bold">{{ session.email }}</span>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    </nav>
+  </header>
+
+ <!-- Sidebar -->
+<div class="sidebar" >
+  <h4 class="text-center fw-bold display-5 text-danger d-block py-2" >Tech</h4>
+  <a href="{{ url_for('technician_dashboard') }}" class="text-danger d-block py-2">Dashboard</a>
+  <a href="{{ url_for('add_maintenance') }}" class="text-danger d-block py-2">Maintenance & Repair Details</a>
+  <a href="{{ url_for('change_password') }}" class="text-danger d-block py-2">Change Password</a>
+  <a href="{{ url_for('logout') }}" class="text-danger d-block py-2">Logout</a>
+</div>
+
+  <div class="content mt-5 pt-5">
+    <h2 class="mb-4">Add Parts Details</h2>
+    <form method="POST" enctype="multipart/form-data">
+        <!-- Asset Details -->
+        <div class="card mb-4 ">
+            <div class="card-header bg-danger text-white">Asset Details</div>
+            <div class="card-body row g-3">
+                <div class="col-md-6">
+                    <label for="asset_name" class="form-label">Asset Name</label>
+                    <input type="text" class="form-control" name="asset_name" required>
+                </div>
+                <div class="col-md-6">
+                    <label for="description" class="form-label">Description</label>
+                    <textarea class="form-control" name="description" rows="2"></textarea>
+                </div>
+                <div class="col-md-6">
+                    <label for="category_id" class="form-label">Category</label>
+                    <select name="category_id" id="category_id" class="form-select" required>
+                    <option value="">-- Select Category --</option>
+                    {% for cat in categories %}
+                        <option value="{{ cat[0] }}">{{ cat[1] }}</option>
+                    {% endfor %}
+                    </select>
+                </div>
+
+                <div class="col-md-6">
+                    <label for="subcategory_id" class="form-label">Subcategory</label>
+                    <select name="subcategory_id" id="subcategory_id" class="form-select">
+                    <option value="">-- Select Subcategory --</option>
+                    {% for sub in subcategories %}
+                        <option value="{{ sub[0] }}" data-parent="{{ sub[2] }}">{{ sub[1] }}</option>
+                    {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label for="purchase_date" class="form-label">Purchase Date</label>
+                    <input type="date" class="form-control" name="purchase_date" required>
+                </div>
+                <div class="col-md-6">
+                    <label for="purchase_cost" class="form-label">Purchase Cost</label>
+                    <input type="number" step="0.01" class="form-control" name="purchase_cost" required>
+                </div>
+                <div class="col-md-6">
+                    <label for="remarks" class="form-label">Remarks</label>
+                    <textarea class="form-control" name="remarks" rows="2"></textarea>
+                </div>
+            </div>
+        </div>
+
+        <!-- Warranty -->
+        <div class="card mb-4">
+            <div class="card-header bg-danger text-white">Warranty</div>
+            <div class="card-body">
+                <label for="warranty_years" class="form-label">Warranty (Years)</label>
+                <input type="number" class="form-control" name="warranty_years">
+            </div>
+        </div>
+
+        <!-- Vendor -->
+        <div class="card mb-4">
+            <div class="card-header bg-danger text-white">Vendor</div>
+            <div class="card-body row g-3">
+                <div class="col-md-6">
+                    <label for="vendor_name" class="form-label">Name</label>
+                    <input type="text" class="form-control" name="vendor_name">
+                </div>
+                <div class="col-md-6">
+                    <label for="vendor_email" class="form-label">Email</label>
+                    <input type="email" class="form-control" name="vendor_email">
+                </div>
+                <div class="col-md-6">
+                    <label for="vendor_phone" class="form-label">Phone</label>
+                    <input type="text" class="form-control" name="vendor_phone">
+                </div>
+                <div class="col-md-6">
+                    <label for="vendor_address" class="form-label">Address</label>
+                    <textarea class="form-control" name="vendor_address" rows="2"></textarea>
+                </div>
+            </div>
+        </div>
+
+        <!-- File Upload -->
+        <div class="card mb-4">
+            <div class="card-header bg-danger text-white">Upload File</div>
+            <div class="card-body">
+                <input type="file" name="file" class="form-control">
+            </div>
+        </div>
+
+        <!-- Submit Button -->
+        <div class="text-end">
+            <button type="submit" class="btn btn-danger">Submit</button>
+        </div>
+    </form>
+</div>
+  
+  <!-- Scripts -->
+<script>
+  function resizeIframe(iframe) {
+    try {
+      const contentHeight = iframe.contentWindow.document.body.scrollHeight;
+      iframe.style.height = contentHeight + "px";
+    } catch (e) {
+      console.warn("Iframe content could not be resized:", e);
+    }
+  }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    document.querySelectorAll("iframe").forEach(iframe => {
+      iframe.addEventListener("load", () => resizeIframe(iframe));
+    });
+  });
+</script>
+
+<!-- AOS Animation Library -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.js"></script>
+<script>
+  AOS.init({
+    once: true, // Animate only once per element
+    duration: 2000 // Optional: animation duration
+  });
+</script>

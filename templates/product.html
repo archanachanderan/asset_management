@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Our Products</title>
+
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.css" rel="stylesheet" />
+
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background-color: black;
+    }
+
+    .product-section {
+      position: relative;
+      background-color: rgba(0, 0, 0, 0.7);
+      color: white;
+      padding: 100px 20px;
+      overflow: hidden;
+    }
+
+    .blur-sides {
+  /* Create fading edges using a radial gradient mask */
+  -webkit-mask-image: radial-gradient(
+    ellipse at center,
+    rgba(0, 0, 0, 1) 60%,
+    rgba(0, 0, 0, 0) 100%
+  );
+  mask-image: radial-gradient(
+    ellipse at center,
+    rgba(0, 0, 0, 1) 60%,
+    rgba(0, 0, 0, 0) 100%
+  );
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+}
+
+    .product-bg {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      opacity: 0.25; /* Dim the image */
+      z-index: 1;
+    }
+
+    .product-content {
+      position: relative;
+      z-index: 2;
+      max-width: 800px;
+      margin: 0 auto;
+      text-align: center;
+    }
+    
+  </style>
+</head>
+<body>
+
+  <section class="product-section blur-sides">
+    <!-- Background Image -->
+    <img src="{{ url_for('static', filename='images/product-sample.jpg') }}" alt="Background Product" class="product-bg" />
+
+    <!-- Text Content -->
+    <div class="product-content" data-aos="fade-up">
+      <h2 class="fw-bold mb-4">Our Products</h2>
+      <p class="fs-5">
+        We manufacture a variety of metal caps and precision components tailored to different sizes and needs.
+        From compact <strong>Insert Caps</strong> to larger <strong>Step</strong> and <strong>Bore Caps</strong>,
+        our products are built with accuracy and durability in mind. Each cap type—Plain, Step, Bore, or Bypass—
+        serves a specific function depending on fitting requirements. Available in diameters ranging from 6 mm to over 90 mm,
+        our components are suited for applications where reliability and fit are essential.
+      </p>
+    </div>
+  </section>
+
+
+  <!-- Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.js"></script>
+  <script>
+    AOS.init({
+      once: false,      // true = animation happens once; false = happens every scroll
+    duration: 2000,   // animation duration in ms
+    easing: 'ease-in-out'
+    });
+  </script>
+
+</body>
+</html>

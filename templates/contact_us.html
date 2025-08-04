@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Contact Us</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+
+  <!-- AOS (Animate On Scroll) -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.css" rel="stylesheet">
+  <style>
+    body {
+      background-color: #f8f9fa;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container py-5">
+    <div class="text-center mb-5" data-aos="fade-down" data-aos-delay="1500">
+      <h2 class="fw-bold">Contact Us</h2>
+      <p class="text-muted">We’d love to hear from you. Reach out anytime.</p>
+    </div>
+
+    <div class="row justify-content-center g-4">
+      <!-- Email -->
+      <div class="col-md-4 mb-2" data-aos="fade-up" data-aos-delay="2000">
+        <div class="bg-white p-4 rounded shadow text-center h-100">
+          <i class="bi bi-envelope-fill text-danger fs-1 mb-5"></i>
+          <h5 class="fw-bold">Email</h5>
+          <p><a href="mailto:sveprscomp@gmail.com" class="text-decoration-none text-dark">sveprscomp@gmail.com</a></p>
+        </div>
+      </div>
+
+      <!-- Phone -->
+      <div class="col-md-4 mb-2" data-aos="fade-up" data-aos-delay="2500">
+        <div class="bg-white p-4 rounded shadow text-center h-100">
+          <i class="bi bi-telephone-fill text-danger fs-1 mb-5"></i>
+          <h5 class="fw-bold">Phone</h5>
+          <p><a href="tel:+919242875555" class="text-decoration-none text-dark">+91 9242875555</a></p>
+        </div>
+      </div>
+
+      <!-- Address -->
+      <div class="col-md-4 mb-2" data-aos="fade-up" data-aos-delay="3000">
+        <div class="bg-white p-4 rounded shadow text-center h-100">
+          <i class="bi bi-geo-alt-fill text-danger fs-1 mb-5"></i>
+          <h5 class="fw-bold">Address</h5>
+          <p>
+            <a href="https://www.google.com/maps?q=13.04498,77.73890" target="_blank" class="text-decoration-none text-dark">
+              #26/1, Cheemasandra, Virgonagar Post<br>
+              Bangalore - 560049, India
+            </a>
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Google Map -->
+    <div class="mt-5" data-aos="zoom-in-up" data-aos-delay="3500">
+      <div class="ratio ratio-16x9 shadow rounded">
+        <iframe
+          src="https://maps.google.com/maps?q=13.04498,77.73890&z=15&output=embed"
+          allowfullscreen loading="lazy">
+        </iframe>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.js"></script>
+  <script>
+    AOS.init({
+      once: false,     
+    duration: 4000, 
+    });
+  </script>
+
+</body>
+</html>

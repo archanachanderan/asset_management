@@ -1,0 +1,178 @@
+/* ====================== Global Styles ====================== */
+html {
+  scroll-behavior: smooth;
+}
+
+a:hover {
+  color: #a49b9b6e !important;
+  transition: 0.3s;
+}
+
+img.logo {
+  max-width: 100%;
+  height: auto;
+}
+
+/* ====================== Hero Section ====================== */
+.hero-section {
+  position: relative;
+  height: 90vh;
+  background-image: url('/static/images/fact.jpg');
+  background-size: cover;
+  background-position: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  overflow: hidden;
+}
+
+.hero-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5); /* dim the background */
+  z-index: 1;
+}
+
+.hero-text {
+  position: relative;
+  z-index: 2;
+  text-align: center;
+  text-shadow: 3px 3px 10px rgba(0, 0, 0, 1);
+  color: #fff;
+}
+
+/* ====================== Footer ====================== */
+footer {
+  background-color: rgb(20, 67, 67);
+  color: white;
+  padding: 20px 0;
+  text-align: center;
+  width: 100%;
+}
+
+/* ====================== Sidebar ====================== */
+.sidebar {
+  min-height: 100vh;
+  background-color: #f8f9fa;
+  padding: 20px;
+  border-right: 1px solid #ddd;
+}
+
+/* ====================== Table Container ====================== */
+.table-container {
+  padding: 20px;
+}
+
+/* ====================== Button ====================== */
+.btn-sm {
+  padding: 0.25rem 0.5rem;
+}
+
+/* ====================== Login ====================== */
+.login-container {
+  min-height: 100vh;
+  margin-top: 20px;
+}
+
+.login-box {
+  width: 95%;
+  max-width: 900px;
+  min-height: 500px;
+  background-color: white;
+  border-radius: 15px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: row;
+}
+
+.login-left {
+  background-color: #ffffff;
+  flex: 1;
+}
+
+.login-right {
+  background-color: #f7f7f7;
+  flex: 1;
+}
+
+.sidebar {
+    width: 250px;
+    position: fixed;
+    height: 100%;
+    background-color: #f8f9fa;
+    padding-top: 20px;
+    padding-right: 5px;
+    padding-left: 5px;
+    color: black;
+  }
+
+  .content {
+    margin-left: 250px; /* same as sidebar width */
+    padding: 20px;
+    background-color: white;
+    color: black;
+  }
+
+  .sidebar a {
+    color: BLACK;
+    text-decoration: none;
+    display: block;
+    padding: 10px 20px;
+  }
+
+  .sidebar a:hover {
+    background-color: #a49b9b6e;
+  }
+
+.blur-sides {
+  /* Create fading edges using a radial gradient mask */
+  -webkit-mask-image: radial-gradient(
+    ellipse at center,
+    rgba(0, 0, 0, 1) 60%,
+    rgba(0, 0, 0, 0) 100%
+  );
+  mask-image: radial-gradient(
+    ellipse at center,
+    rgba(0, 0, 0, 1) 60%,
+    rgba(0, 0, 0, 0) 100%
+  );
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+}
+
+  table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 20px;
+    }
+    th, td {
+        padding: 10px;
+        border: 1px solid #ccc;
+        text-align: left;
+    }
+    th {
+        background-color: #f2f2f2;
+    }
+
+/* Hide left panel on small screens */
+@media (max-width: 768px) {
+  .login-left {
+    display: none;
+  }
+}
+
+/* ====================== Iframe ====================== */
+iframe {
+  display: block;
+  width: 100%;
+  border: none;
+  overflow: hidden;
+}
