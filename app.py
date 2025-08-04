@@ -194,7 +194,7 @@ def login():
         # Fetch user
         user = get_user_by_email_role(email, role)
 
-        if user and check_password_hash(user.password, password):
+        if user and check_password_hash(user.password_hash, password):
             login_user(user)
             session['role'] = role
             session['email'] = email   
