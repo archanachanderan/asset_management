@@ -1,48 +1,32 @@
-from flask import Flask, render_template, request, redirect, url_for, session, flash, send_file
-from flask_login import LoginManager, login_user, logout_user, login_required, current_user, UserMixin
-from werkzeug.security import generate_password_hash, check_password_hash
-from werkzeug.utils import secure_filename
-import psycopg2
-from datetime import datetime, timedelta
 import os
 import io
 import random
 import string
-import pytz
+from datetime import datetime
+from flask import (Flask, render_template, request, redirect, url_for, session, flash,send_file, send_from_directory, abort)
+from flask_login import (LoginManager, login_user, logout_user, login_required, current_user, UserMixin)
+from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.utils import secure_filename
+import psycopg2
 from dotenv import load_dotenv
+from flask_mail import Mail, Message
+import qrcode
 from captcha.image import ImageCaptcha
 from fpdf import FPDF
-import qrcode
-from PIL import Image
 from itsdangerous import URLSafeTimedSerializer
-from flask_mail import Mail, Message
-from flask import send_file, abort
-from uuid import uuid4
-from psycopg2 import extras
-from flask import send_from_directory
+import pytz
 
-
-
-# Load environment variables
+# --- Load env vars (make sure .env is set in Render dashboard too) ---
 load_dotenv()
 
 app = Flask(__name__)
-app.secret_key = '201025'
+app.secret_key = os.getenv("SECRET_KEY")
+
+# --- Load env vars (make sure .env is set in Render dashboard too) ---
 UPLOAD_FOLDER = os.path.join('static', 'uploads')
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-
-# Upload config
-UPLOAD_FOLDER = 'uploads'
-ALLOWED_EXTENSIONS = {'pdf', 'png', 'jpg', 'jpeg'}
-
-# Setup serializer and mail in your app init
-s = URLSafeTimedSerializer(app.secret_key)
-mail = Mail(app)
-
-# --- Flask-Login ---
-login_manager = LoginManager()
-login_manager.init_app(app)
-login_manager.login_view = 'login'
+ALLOWED_EXTENSIONS = {'pdf', 'png', 'jpg', 'jpeg', 'docx'}
 
 # Mail Configuration
 app.config['MAIL_SERVER'] = 'smtp.gmail.com'
@@ -51,11 +35,20 @@ app.config['MAIL_USE_TLS'] = True
 app.config['MAIL_USE_SSL'] = False
 app.config['MAIL_USERNAME'] = os.getenv('EMAIL_USER')
 app.config['MAIL_PASSWORD'] = os.getenv('EMAIL_PASS')
+app.config['MAIL_DEFAULT_SENDER'] = os.getenv('MAIL_DEFAULT_SENDER')
 mail = Mail(app)
 
 # --- DB Connection ---
 def get_db_connection():
-    return psycopg2.connect(os.getenv("DATABASE_URL"))
+    return psycopg2.connect(os.getenv("DATABASE_URL"), sslmode='require')
+
+# Setup serializer and mail in your app init
+s = URLSafeTimedSerializer(app.secret_key)
+
+# --- Flask-Login ---
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = 'login'
 
 # --- User model using Flask-Login ---
 class User(UserMixin):
@@ -69,6 +62,10 @@ class User(UserMixin):
 
     def has_role(self, role_name):
         return role_name in self.roles
+    
+def allowed_file(filename):
+    allowed_extensions = {'pdf', 'png', 'jpg', 'jpeg', 'docx'}
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in allowed_extensions
     
 @app.route('/')
 def welcome():
@@ -1213,10 +1210,6 @@ def add_asset():
         return redirect(url_for('view_assets'))
 
     return render_template('add_asset.html', categories=categories, users=users, subcategories=subcategories)
-
-def allowed_file(filename):
-    allowed_extensions = {'pdf', 'png', 'jpg', 'jpeg', 'docx'}
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in allowed_extensions
 
 def none_if_empty(value):
     """
