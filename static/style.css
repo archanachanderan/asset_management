@@ -162,17 +162,40 @@ footer {
         background-color: #f2f2f2;
     }
 
-/* Hide left panel on small screens */
-@media (max-width: 768px) {
-  .login-left {
-    display: none;
-  }
-}
-
 /* ====================== Iframe ====================== */
 iframe {
   display: block;
   width: 100%;
   border: none;
   overflow: hidden;
+}
+
+/* ====================== Responsive Improvements ====================== */
+@media (max-width: 768px) {
+  /* Hide sidebar on small screens */
+  .sidebar {
+    display: none;
+  }
+
+  /* Remove left margin on content so it fills screen width */
+  .content {
+    margin-left: 0;
+    padding: 10px;
+  }
+
+  /* Stack login boxes vertically for narrow screens */
+  .login-box {
+    flex-direction: column;
+  }
+  
+  /* Make login-left hidden */
+  .login-left {
+    display: none;
+  }
+  
+  /* Make login-right fill full width */
+  .login-right {
+    flex: none;
+    width: 100%;
+  }
 }
