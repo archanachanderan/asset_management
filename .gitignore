@@ -3,16 +3,107 @@ __pycache__/
 *.pyc
 *.pyo
 *.pyd
+
+# Virtual Environments
 env/
 venv/
+ENV/
+env.bak/
+venv.bak/
+.venv/
+.pdm-python
+.pixi
+
+# SQLite DBs
 *.sqlite3
+db.sqlite3
+db.sqlite3-journal
 
 # Environment files
 .env
+.envrc
 
 # VS Code
 .vscode/
 
+# JetBrains IDEs (PyCharm etc.)
+.idea/
+
 # OS
 .DS_Store
 Thumbs.db
+
+# Logs
+*.log
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Flask specific
+instance/
+.webassets-cache
+
+# Bytecode, build and dist
+build/
+dist/
+*.egg-info/
+*.egg
+.eggs/
+develop-eggs/
+downloads/
+sdist/
+wheels/
+*.manifest
+*.spec
+
+# Testing and coverage
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py.cover
+.hypothesis/
+.pytest_cache/
+
+# MyPy / Pyre / Pytype / Ruff / dmypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pyre/
+.pytype/
+.ruff_cache/
+
+# Sphinx docs
+docs/_build/
+
+# Jupyter Notebooks
+.ipynb_checkpoints
+
+# Project tools
+.pybuilder/
+target/
+.site/
+.pypirc
+.ropeproject
+.spyderproject
+.spyproject
+.Python
+
+# PEP 582
+__pypackages__/
+
+# Celery
+celerybeat-schedule
+celerybeat.pid
+
+# Misc
+.cursorignore
+.cursorindexingignore
+.abstra/
+marimo/_static/
+marimo/_lsp/
+__marimo__/
