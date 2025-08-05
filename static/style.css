@@ -320,29 +320,42 @@ iframe {
   }
 }
 
+/* Force navbar content into a single line on small screens */
 @media (max-width: 767px) {
-  /* Hide everything inside the navbar except the logo and company name */
-  .navbar .d-flex {
-    display: none !important;
+  .navbar .container-fluid {
+    flex-wrap: nowrap;
+    overflow-x: auto;
   }
 
-  /* Make sure logo and company name stay on one line */
   .navbar-brand {
-    font-size: 1.2rem !important;
-    display: flex !important;
-    align-items: center !important;
     white-space: nowrap;
+    font-size: 1rem;
   }
 
-  .navbar-brand img {
-    height: 35px !important;
-    margin-right: 8px;
+  .navbar .d-flex {
+    flex-wrap: nowrap;
+    white-space: nowrap;
+    overflow-x: auto;
   }
 
-  .navbar {
-    justify-content: start !important;
-    padding-left: 16px !important;
-    padding-right: 16px !important;
+  .navbar .btn {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.8rem;
+    margin-right: 0.25rem;
+  }
+
+  /* Make sure sidebar toggle button floats on top */
+  .sidebar-toggle {
+    position: fixed;
+    top: 10px;
+    left: 10px;
+    z-index: 2000; /* higher than navbar */
+    background-color: #dc3545;
+    color: white;
+    padding: 8px 12px;
+    font-size: 1rem;
+    border-radius: 4px;
+    cursor: pointer;
   }
 }
 
