@@ -243,48 +243,6 @@ iframe {
   }
 }
 
-/* Fix navbar issues on mobile */
-@media (max-width: 991px) {
-  .navbar .container-fluid {
-    flex-wrap: wrap;
-  }
-
-  .navbar-brand {
-    font-size: 1.2rem;
-    text-align: center;
-    width: 100%;
-    margin-bottom: 0.5rem;
-  }
-
-  .navbar-brand img {
-    height: 30px;
-  }
-
-  .navbar .btn {
-    font-size: 0.9rem;
-    padding: 6px 12px;
-    margin-bottom: 0.3rem;
-  }
-
-  .navbar .d-flex {
-    flex-direction: column;
-    align-items: flex-start;
-    width: 100%;
-  }
-
-  .navbar .ms-3 {
-    margin-left: 0 !important;
-  }
-
-  .navbar .bi-person-circle {
-    font-size: 1.2rem;
-  }
-
-  .navbar .fw-bold {
-    font-size: 0.9rem;
-  }
-}
-
 /* Make sure mobile toggle button is visible */
 .mobile-nav-toggle {
   display: block;
@@ -319,36 +277,4 @@ iframe {
     left: 0;
   }
 }
-
-.navbar-content {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-}
-
-@media (max-width: 768px) {
-  .navbar-content {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-}
-
-.navbar-content {
-  display: flex;
-  white-space: nowrap;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-}
-
-.nav-links a {
-  padding-right: 15px;
-}
-
-@media (max-width: 768px) {
-  .nav-links {
-    display: none;
-  }
-}
-
 
