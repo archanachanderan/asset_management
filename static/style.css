@@ -306,3 +306,33 @@ iframe {
 .navbar .container-fluid::-webkit-scrollbar {
   display: none; /* Chrome, Safari */
 }
+
+/* Your slider menu container */
+#sidebar {
+  position: fixed; /* Keep it in place */
+  top: 0;
+  left: 0;
+  height: 100vh;
+  width: 250px;
+  background-color: #fff;
+  z-index: 1060; /* Higher than any page content */
+  overflow-y: auto;
+  box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+}
+
+/* Optional: dark overlay when slider is open */
+#sidebar-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100vh;
+  width: 100vw;
+  background-color: rgba(0,0,0,0.4);
+  z-index: 1059;
+  display: none; /* Show when menu is open */
+}
+
+/* Adjust page content so it doesn't sit under header */
+body {
+  padding-top: 70px; /* or whatever your header height is */
+}
