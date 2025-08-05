@@ -271,6 +271,7 @@ iframe {
     left: 0;
     top: 80px;
     position: fixed;
+    z-index: 9999; /* Ensures it's on top of everything */
   }
 
   .sidebar.active {
@@ -306,4 +307,3 @@ iframe {
 .navbar .container-fluid::-webkit-scrollbar {
   display: none; /* Chrome, Safari */
 }
-
