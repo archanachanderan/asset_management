@@ -320,42 +320,34 @@ iframe {
   }
 }
 
-/* Force navbar content into a single line on small screens */
-@media (max-width: 767px) {
-  .navbar .container-fluid {
-    flex-wrap: nowrap;
-    overflow-x: auto;
-  }
+.navbar-content {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+}
 
-  .navbar-brand {
-    white-space: nowrap;
-    font-size: 1rem;
+@media (max-width: 768px) {
+  .navbar-content {
+    flex-direction: column;
+    align-items: flex-start;
   }
+}
 
-  .navbar .d-flex {
-    flex-wrap: nowrap;
-    white-space: nowrap;
-    overflow-x: auto;
-  }
+.navbar-content {
+  display: flex;
+  white-space: nowrap;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
 
-  .navbar .btn {
-    padding: 0.25rem 0.5rem;
-    font-size: 0.8rem;
-    margin-right: 0.25rem;
-  }
+.nav-links a {
+  padding-right: 15px;
+}
 
-  /* Make sure sidebar toggle button floats on top */
-  .sidebar-toggle {
-    position: fixed;
-    top: 10px;
-    left: 10px;
-    z-index: 2000; /* higher than navbar */
-    background-color: #dc3545;
-    color: white;
-    padding: 8px 12px;
-    font-size: 1rem;
-    border-radius: 4px;
-    cursor: pointer;
+@media (max-width: 768px) {
+  .nav-links {
+    display: none;
   }
 }
 
