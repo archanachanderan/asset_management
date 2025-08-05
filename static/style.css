@@ -1,4 +1,3 @@
-/* ====================== Global Styles ====================== */
 html {
   scroll-behavior: smooth;
 }
@@ -13,7 +12,6 @@ img.logo {
   height: auto;
 }
 
-/* ====================== Hero Section ====================== */
 .hero-section {
   position: relative;
   height: 90vh;
@@ -33,7 +31,7 @@ img.logo {
   left: 0;
   width: 100%;
   height: 100%;
-  background-color: rgba(0, 0, 0, 0.5); /* dim the background */
+  background-color: rgba(0, 0, 0, 0.5); 
   z-index: 1;
 }
 
@@ -45,7 +43,6 @@ img.logo {
   color: #fff;
 }
 
-/* ====================== Footer ====================== */
 footer {
   background-color: rgb(20, 67, 67);
   color: white;
@@ -54,7 +51,6 @@ footer {
   width: 100%;
 }
 
-/* ====================== Sidebar ====================== */
 .sidebar {
   min-height: 100vh;
   background-color: #f8f9fa;
@@ -62,17 +58,14 @@ footer {
   border-right: 1px solid #ddd;
 }
 
-/* ====================== Table Container ====================== */
 .table-container {
   padding: 20px;
 }
 
-/* ====================== Button ====================== */
 .btn-sm {
   padding: 0.25rem 0.5rem;
 }
 
-/* ====================== Login ====================== */
 .login-container {
   min-height: 100vh;
   margin-top: 20px;
@@ -100,33 +93,33 @@ footer {
 }
 
 .sidebar {
-    width: 250px;
-    position: fixed;
-    height: 100%;
-    background-color: #f8f9fa;
-    padding-top: 20px;
-    padding-right: 5px;
-    padding-left: 5px;
-    color: black;
+  width: 250px;
+  position: fixed;
+  height: 100%;
+  background-color: #f8f9fa;
+  padding-top: 20px;
+  padding-right: 5px;
+  padding-left: 5px;
+  color: black;
+}
+
+.content {
+  margin-left: 250px; /* same as sidebar width */
+  padding: 20px;
+  background-color: white;
+  color: black;
+}
+
+.sidebar a {
+  color: BLACK;
+  text-decoration: none;
+  display: block;
+  padding: 10px 20px;
   }
 
-  .content {
-    margin-left: 250px; /* same as sidebar width */
-    padding: 20px;
-    background-color: white;
-    color: black;
-  }
-
-  .sidebar a {
-    color: BLACK;
-    text-decoration: none;
-    display: block;
-    padding: 10px 20px;
-  }
-
-  .sidebar a:hover {
-    background-color: #a49b9b6e;
-  }
+.sidebar a:hover {
+  background-color: #a49b9b6e;
+}
 
 .blur-sides {
   /* Create fading edges using a radial gradient mask */
@@ -148,21 +141,20 @@ footer {
   mask-position: center;
 }
 
-  table {
-        width: 100%;
-        border-collapse: collapse;
-        margin-bottom: 20px;
-    }
-    th, td {
-        padding: 10px;
-        border: 1px solid #ccc;
-        text-align: left;
-    }
-    th {
-        background-color: #f2f2f2;
-    }
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 20px;
+}
+th, td {
+  padding: 10px;
+  border: 1px solid #ccc;
+  text-align: left;
+}
+th {
+  background-color: #f2f2f2;
+}
 
-/* ====================== Iframe ====================== */
 iframe {
   display: block;
   width: 100%;
@@ -172,30 +164,159 @@ iframe {
 
 /* ====================== Responsive Improvements ====================== */
 @media (max-width: 768px) {
-  /* Hide sidebar on small screens */
   .sidebar {
     display: none;
   }
 
-  /* Remove left margin on content so it fills screen width */
   .content {
     margin-left: 0;
     padding: 10px;
   }
 
-  /* Stack login boxes vertically for narrow screens */
   .login-box {
     flex-direction: column;
   }
-  
-  /* Make login-left hidden */
+
   .login-left {
     display: none;
   }
-  
-  /* Make login-right fill full width */
+
   .login-right {
     flex: none;
     width: 100%;
   }
+
+  .hero-section {
+    height: 60vh;
+    background-position: top;
+    text-align: center;
+  }
+
+  .hero-text h1 {
+    font-size: 1.8rem;
+  }
 }
+
+/* Mobile responsiveness */
+@media (max-width: 992px) {
+  .sidebar {
+    display: none; /* Hide sidebar on small screens */
+  }
+
+  .sidebar.active {
+    display: block; /* Show sidebar when toggled */
+    background-color: #fff;
+    box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+  }
+
+  /* Ensure content doesn't get covered by sidebar */
+  .main-content {
+    margin-left: 0 !important;
+  }
+}
+
+/* Content area */
+.main-content {
+  margin-left: 240px;
+  padding: 20px;
+}
+
+@media (max-width: 992px) {
+  .main-content {
+    margin-left: 0;
+  }
+}
+
+/* Mobile toggle button */
+.mobile-nav-toggle {
+  cursor: pointer;
+  font-size: 1.5rem;
+  padding: 5px 12px;
+  background-color: #f8f9fa;
+  border-radius: 5px;
+  display: none; /* hidden on desktop */
+}
+
+@media (max-width: 992px) {
+  .mobile-nav-toggle {
+    display: inline-block; /* visible on mobile */
+  }
+}
+
+/* Fix navbar issues on mobile */
+@media (max-width: 991px) {
+  .navbar .container-fluid {
+    flex-wrap: wrap;
+  }
+
+  .navbar-brand {
+    font-size: 1.2rem;
+    text-align: center;
+    width: 100%;
+    margin-bottom: 0.5rem;
+  }
+
+  .navbar-brand img {
+    height: 30px;
+  }
+
+  .navbar .btn {
+    font-size: 0.9rem;
+    padding: 6px 12px;
+    margin-bottom: 0.3rem;
+  }
+
+  .navbar .d-flex {
+    flex-direction: column;
+    align-items: flex-start;
+    width: 100%;
+  }
+
+  .navbar .ms-3 {
+    margin-left: 0 !important;
+  }
+
+  .navbar .bi-person-circle {
+    font-size: 1.2rem;
+  }
+
+  .navbar .fw-bold {
+    font-size: 0.9rem;
+  }
+}
+
+/* Make sure mobile toggle button is visible */
+.mobile-nav-toggle {
+  display: block;
+  background-color: #fff;
+  padding: 10px 15px;
+  font-weight: bold;
+  font-size: 1.2rem;
+  cursor: pointer;
+  z-index: 1051;
+  position: fixed;
+  top: 60px;
+  left: 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+/* Hide toggle on desktop */
+@media (min-width: 992px) {
+  .mobile-nav-toggle {
+    display: none;
+  }
+}
+
+@media (min-width: 992px) {
+  .sidebar {
+    left: 0;
+    top: 80px;
+    position: fixed;
+  }
+
+  .sidebar.active {
+    left: 0;
+  }
+}
+

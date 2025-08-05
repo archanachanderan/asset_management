@@ -37,6 +37,10 @@
     </nav>
   </header>
 
+  <!-- Mobile Menu Button -->
+<div class="mobile-nav-toggle d-lg-none ms-3" onclick="toggleSidebar()">☰ Menu</div>
+
+
   <div class="sidebar" >
   {% if session.role == 'Super Admin' %}
   <h4 class="text-center fw-bold display-5 text-danger d-block py-2" >Admin</h4>
@@ -78,6 +82,10 @@
 
   <!-- Scripts -->
 <script>
+  function toggleSidebar() {
+    const sidebar = document.querySelector('.sidebar');
+    sidebar.classList.toggle('active');
+  }
   function resizeIframe(iframe) {
     try {
       const contentHeight = iframe.contentWindow.document.body.scrollHeight;

@@ -36,6 +36,10 @@
     </nav>
   </header>
 
+  <!-- Mobile Menu Button -->
+<div class="mobile-nav-toggle d-lg-none ms-3" onclick="toggleSidebar()">☰ Menu</div>
+
+
  <!-- Sidebar -->
 <div class="sidebar" >
   <h4 class="text-center fw-bold display-5 text-danger d-block py-2" >Tech</h4>
@@ -143,6 +147,10 @@
   
   <!-- Scripts -->
 <script>
+  function toggleSidebar() {
+    const sidebar = document.querySelector('.sidebar');
+    sidebar.classList.toggle('active');
+  }
   function resizeIframe(iframe) {
     try {
       const contentHeight = iframe.contentWindow.document.body.scrollHeight;
