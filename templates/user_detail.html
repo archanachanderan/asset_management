@@ -38,13 +38,13 @@
   </header>
 
   <div class="sidebar" >
-  {% if session.role == 'Admin' %}
+  {% if session.role == 'Super Admin' %}
   <h4 class="text-center fw-bold display-5 text-danger d-block py-2" >Admin</h4>
   {% endif %}
   {% if session.role == 'Asset Manager' %}
   <h4 class="text-center fw-bold display-5 text-danger d-block py-2" >Manager</h4>
   {% endif %}
-  {% if session.role == 'Admin' %}
+  {% if session.role == 'Super Admin' %}
   <a href="{{ url_for('admin_dashboard') }}" class="text-danger d-block py-2">Dashboard</a>
   {% endif %}
   {% if session.role == 'Asset Manager' %}

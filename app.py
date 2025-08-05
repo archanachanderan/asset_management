@@ -2,6 +2,8 @@ import os
 import io
 import random
 import string
+import psycopg2
+import psycopg2.extras
 from datetime import datetime
 from flask import (Flask, render_template, request, redirect, url_for, session, flash,send_file, send_from_directory, abort)
 from flask_login import (LoginManager, login_user, logout_user, login_required, current_user, UserMixin)
@@ -105,7 +107,7 @@ def forgot_password():
         email = request.form.get('email')
         conn = get_db_connection()
         cur = conn.cursor()
-        cur.execute("SELECT id FROM users WHERE email = %s", (email,))
+        cur.execute("SELECT id FROM user_details WHERE email = %s", (email,))
         user = cur.fetchone()
         if user:
             token = s.dumps(email, salt='password-reset-salt')
@@ -114,6 +116,7 @@ def forgot_password():
             msg.body = f'Click the link to reset your password: {reset_url}'
             mail.send(msg)
             flash('Password reset link sent to your email.', 'success')
+            return render_template('login.html')
         else:
             flash('Email not found.', 'danger')
         cur.close()
@@ -232,23 +235,23 @@ def login():
     return render_template('login.html', animate=animate)
 
 @app.route('/reset_password', methods=['GET', 'POST'])
-@login_required
 def reset_password():
     if request.method == 'POST':
         new_password = request.form['password']
         confirm_password = request.form['confirm_password']
+        user_id = request.form.get('user_id') 
 
         if new_password != confirm_password:
             flash('Passwords do not match.', 'danger')
             return render_template('reset_password.html')
-        hashed = generate_password_hash(new_password)
+        new_hashed = generate_password_hash(new_password)
         conn = get_db_connection()
         cur = conn.cursor()
         cur.execute("""
             UPDATE user_details
             SET password_hash = %s, force_password_reset = FALSE
             WHERE id = %s
-        """, (hashed, current_user.id))
+        """, (new_hashed, user_id))
         conn.commit()
         cur.close()
         conn.close()
@@ -440,6 +443,25 @@ def add_user():
             """, (name, email, password_hash, role_id, is_active, created_at))
             new_user_id = cur.fetchone()[0]
             conn.commit()
+
+            msg = Message(
+        subject="Welcome to SVE System",
+        recipients=[email],
+        body=f"""Hello {name},
+
+Your account has been created in the SVE System.
+
+Email: {email}
+Temporary Password: default123
+
+Please login and change your password.
+
+Regards,  
+SVE Admin Team
+"""
+    )
+            mail.send(msg)
+            
             flash("User created successfully with default password 'default123'", 'success')
             return redirect(url_for('view_users'))
         except Exception as e:
@@ -489,6 +511,21 @@ def edit_user(user_id):
             WHERE id=%s
         """, (name, email, role_id, is_active, user_id))
         conn.commit()
+
+        msg = Message(
+    subject="Your SVE Account Was Updated",
+    recipients=[email],
+    body=f"""Hello {name},
+
+Your account information has been updated.
+
+If you did not request these changes, please contact the admin.
+
+Regards,  
+SVE Admin Team
+"""
+)
+        mail.send(msg)
 
         flash('User updated successfully.', 'success')
         cur.close()
@@ -609,7 +646,7 @@ def download_asset_pdf(asset_id):
 
     # Get asset and related data
     cur.execute("""
-        SELECT a.id, a.asset_name, a.description, a.purchase_date, a.purchase_cost, a.remarks, a.is_active
+        SELECT a.id, a.asset_name, a.description, a.purchase_date, a.purchase_cost, a.remarks, a.is_active,
                c.name AS category, v.name AS vendor, a.tag
         FROM asset a
         LEFT JOIN category c ON a.category_id = c.id
@@ -629,7 +666,7 @@ def download_asset_pdf(asset_id):
     assignments = cur.fetchall()
 
     cur.execute("""
-        SELECT task_done, maintenance_date, cost, service_by, comments
+        SELECT task_done, maintenance_date, cost, service_by
         FROM maintenance
         WHERE asset_id = %s ORDER BY maintenance_date DESC
     """, (asset_id,))
@@ -723,7 +760,7 @@ def download_asset_pdf(asset_id):
 @app.route('/asset/<string:asset_tag>/download_qr')
 @login_required
 def download_qr(asset_tag):
-    qr_data = f"http://localhost:5000/asset/qr/{asset_tag}"  # Update URL if deployed
+    qr_data = f"http://https://asset-management-u3dy.onrender.com/asset/qr/{asset_tag}"  # Update URL if deployed
     qr = qrcode.QRCode(box_size=10, border=4)
     qr.add_data(qr_data)
     qr.make(fit=True)
