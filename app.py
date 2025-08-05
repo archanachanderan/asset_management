@@ -9,7 +9,6 @@ from flask import (Flask, render_template, request, redirect, url_for, session, 
 from flask_login import (LoginManager, login_user, logout_user, login_required, current_user, UserMixin)
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
-import psycopg2
 from dotenv import load_dotenv
 from flask_mail import Mail, Message
 import qrcode
@@ -727,7 +726,7 @@ def download_asset_pdf(asset_id):
     pdf.set_font("Arial", '', 10)
     if maintenance:
         for m in maintenance:
-            pdf.multi_cell(0, 8, f"Task Done: {m[0]}\nDate: {m[1]}\nCost: Rs. {m[2]}\nService By: {m[3]}\nComments: {m[4]}", border=1)
+            pdf.multi_cell(0, 8, f"Task Done: {m[0]}\nDate: {m[1]}\nCost: Rs. {m[2]}\nService By: {m[3]}", border=1)
             pdf.ln(2)
     else:
         pdf.cell(0, 8, "No maintenance records.", ln=True)
@@ -760,16 +759,33 @@ def download_asset_pdf(asset_id):
 @app.route('/asset/<string:asset_tag>/download_qr')
 @login_required
 def download_qr(asset_tag):
-    qr_data = f"http://https://asset-management-u3dy.onrender.com/asset/qr/{asset_tag}"  # Update URL if deployed
-    qr = qrcode.QRCode(box_size=10, border=4)
+    import qrcode
+    import io
+    from flask import send_file
+
+    qr_data = f"https://asset-management-u3dy.onrender.com/asset/qr/{asset_tag}"
+
+    qr = qrcode.QRCode(
+        version=1,
+        error_correction=qrcode.constants.ERROR_CORRECT_M,
+        box_size=8,
+        border=4
+    )
     qr.add_data(qr_data)
     qr.make(fit=True)
-    img = qr.make_image(fill="black", back_color="white")
+
+    img = qr.make_image(fill_color="black", back_color="white")
 
     buf = io.BytesIO()
     img.save(buf, format='PNG')
     buf.seek(0)
-    return send_file(buf, mimetype='image/png', as_attachment=True, download_name=f"{asset_tag}_qr.png")
+
+    return send_file(
+        buf,
+        mimetype='image/png',
+        as_attachment=True,
+        download_name=f"{asset_tag}_qr.png"
+    )
     
 @app.route('/view_requests')
 @login_required
