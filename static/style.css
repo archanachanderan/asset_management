@@ -336,3 +336,57 @@ iframe {
 body {
   padding-top: 70px; /* or whatever your header height is */
 }
+
+/* Sidebar base styling */
+.sidebar {
+  position: fixed;
+  top: 60px; /* Below navbar */
+  left: 0;
+  width: 250px;
+  height: auto;
+  background-color: #fff;
+  border-right: 1px solid #dee2e6;
+  box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+  transform: translateX(-100%);
+  transition: transform 0.3s ease-in-out;
+  z-index: 1050;
+}
+
+/* Show sidebar when active */
+.sidebar.active {
+  transform: translateX(0);
+}
+
+/* Menu button style (optional tweak) */
+.mobile-nav-toggle {
+  position: fixed;
+  top: 15px;
+  left: 10px;
+  font-size: 1.5rem;
+  z-index: 1100;
+  cursor: pointer;
+  background: #fff;
+  padding: 8px 16px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+/* Ensure other content shifts down */
+.content {
+  margin-top: 100px;
+}
+
+/* Responsive visibility */
+@media (min-width: 992px) {
+  .sidebar {
+    transform: translateX(0);
+    position: static;
+    height: auto;
+    box-shadow: none;
+    border: none;
+  }
+  .mobile-nav-toggle {
+    display: none;
+  }
+}
+
