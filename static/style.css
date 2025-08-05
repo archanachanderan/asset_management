@@ -278,3 +278,17 @@ iframe {
   }
 }
 
+@media (max-width: 768px) {
+  .custom-header span {
+    font-size: 1rem;
+  }
+
+  .custom-header a {
+    font-size: 0.85rem;
+    padding: 6px 10px;
+  }
+
+  .custom-header img {
+    height: 32px;
+  }
+}
