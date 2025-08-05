@@ -320,87 +320,29 @@ iframe {
   }
 }
 
-/* Base navbar styling */
-.navbar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background-color: #212529; /* Dark background */
-  padding: 0.5rem 1rem;
-  color: white;
-  position: fixed;
-  top: 0;
-  width: 100%;
-  z-index: 1000;
-}
-
-/* Logo & title */
-.navbar .logo {
-  display: flex;
-  align-items: center;
-}
-
-.navbar .logo img {
-  height: 30px;
-  margin-right: 10px;
-}
-
-.navbar .logo span {
-  font-size: 16px;
-  font-weight: bold;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-
-/* Hamburger icon */
-.navbar .toggle-btn {
-  font-size: 24px;
-  cursor: pointer;
-  display: none;
-  background: none;
-  border: none;
-  color: white;
-}
-
-/* Links */
-.navbar-links {
-  display: flex;
-  gap: 1rem;
-}
-
-.navbar-links a {
-  color: white;
-  text-decoration: none;
-  font-size: 14px;
-}
-
-/* Responsive: mobile view */
-@media (max-width: 768px) {
-  .navbar .logo span {
-    font-size: 14px;
+@media (max-width: 767px) {
+  /* Hide everything inside the navbar except the logo and company name */
+  .navbar .d-flex {
+    display: none !important;
   }
 
-  .navbar .toggle-btn {
-    display: block;
+  /* Make sure logo and company name stay on one line */
+  .navbar-brand {
+    font-size: 1.2rem !important;
+    display: flex !important;
+    align-items: center !important;
+    white-space: nowrap;
   }
 
-  .navbar-links {
-    display: none;
-    flex-direction: column;
-    background-color: #212529;
-    width: 100%;
-    position: absolute;
-    top: 100%;
-    left: 0;
+  .navbar-brand img {
+    height: 35px !important;
+    margin-right: 8px;
   }
 
-  .navbar-links.active {
-    display: flex;
-  }
-
-  .navbar-links a {
-    padding: 0.75rem;
-    border-top: 1px solid #333;
+  .navbar {
+    justify-content: start !important;
+    padding-left: 16px !important;
+    padding-right: 16px !important;
   }
 }
 
