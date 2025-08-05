@@ -292,3 +292,17 @@ iframe {
     height: 32px;
   }
 }
+
+/* Target the navbar content inside the fixed-top header */
+.navbar .container-fluid {
+  display: flex;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  white-space: nowrap;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none; /* Firefox */
+}
+
+.navbar .container-fluid::-webkit-scrollbar {
+  display: none; /* Chrome, Safari */
+}
