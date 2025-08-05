@@ -63,9 +63,10 @@ class User(UserMixin):
 
     def has_role(self, role_name):
         return role_name in self.roles
-    
+
+allowed_extensions = {'pdf', 'png', 'jpg', 'jpeg', 'docx'}    
+
 def allowed_file(filename):
-    allowed_extensions = {'pdf', 'png', 'jpg', 'jpeg', 'docx'}
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in allowed_extensions
     
 @app.route('/')
@@ -429,12 +430,29 @@ def add_user():
         name = request.form.get('name')
         email = request.form['email']
         role_id = request.form['role_id']
+        new_role = request.form.get('new_role') 
         is_active = request.form.get('is_active') == 'on'
 
         password_hash = generate_password_hash('default123')
         created_at = datetime.utcnow()
 
         try:
+            # If new role selected
+            if role_id == 'new' and new_role:
+                # Check if role already exists
+                cur.execute("SELECT id FROM role WHERE name = %s", (new_role,))
+                existing = cur.fetchone()
+                if existing:
+                    role_id = existing[0]
+                else:
+                    cur.execute("INSERT INTO role (name) VALUES (%s) RETURNING id", (new_role,))
+                    role_id = cur.fetchone()[0]
+                    conn.commit()
+
+                    # Fix the sequence in case of manual inserts
+                    cur.execute("SELECT setval(pg_get_serial_sequence('role', 'id'), (SELECT MAX(id) FROM role))")
+                    conn.commit()
+
             cur.execute("""
                 INSERT INTO user_details (name, email, password_hash, role_id, is_active, created_at, force_password_reset)
                 VALUES (%s, %s, %s, %s, %s, %s, TRUE)
@@ -613,7 +631,7 @@ def asset_details(asset_id):
 
     if file and file.filename:
         filename = secure_filename(file.filename)
-        file_path = os.path.join('static', 'uploads', filename)  # for DB (relative path)
+        file_path = os.path.join(upload_folder, filename)  # for DB (relative path)
         full_path = os.path.join(app.root_path, file_path)       # full path to save
 
         file.save(full_path)
@@ -851,9 +869,9 @@ def approve_request_page(request_id):
     maintenance_parts = cur.fetchall()
 
     cur.execute("""
-    SELECT file_name
+    SELECT file_name, file_path
     FROM files
-    WHERE asset_id = %s AND is_active = TRUE
+    WHERE asset_id = %s
 """, (asset_id,))
     files = cur.fetchall()
 
@@ -1065,17 +1083,26 @@ def edit_asset(asset_id):
                     VALUES (%s, %s, %s, %s, %s, FALSE)
                 """, (asset_id, assigned_user_id, assigned_from, assigned_until, remarks))
 
-        # File Upload
+
+        upload_folder = os.path.join(app.root_path, 'static', 'uploads')
+
         file = request.files.get('file')
         if file and allowed_file(file.filename):
             filename = secure_filename(file.filename)
-            file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-            file.save(file_path)
-            cur.execute("""
-                INSERT INTO files (asset_id, file_name, file_path, uploaded_by, uploaded_at, is_active)
-                VALUES (%s, %s, %s, %s, %s, FALSE)
-            """, (asset_id, filename, file_path, current_user.id, now))
 
+    # Save path on disk
+            file_save_path = os.path.join(upload_folder, filename)
+            file.save(file_save_path)
+
+    # Relative path for DB (normalize slashes for safety)
+            file_path_for_db = f'uploads/{filename}'.replace('\\', '/')
+
+            now = datetime.now()
+
+            cur.execute("""
+        INSERT INTO files (asset_id, file_name, file_path, uploaded_by, uploaded_at, is_active)
+        VALUES (%s, %s, %s, %s, %s, TRUE)
+        """, (asset_id, filename, file_path_for_db, current_user.id, now))
         conn.commit()
         cur.close()
         conn.close()
@@ -1153,7 +1180,6 @@ def add_asset():
     if request.method == 'POST':
         asset_name = request.form['asset_name']
         description = request.form['description']
-        category_id = none_if_empty(request.form.get('subcategory_id') or request.form.get('category_id'))
         purchase_date = none_if_empty(request.form.get('purchase_date'))
         purchase_cost = none_if_empty(request.form.get('purchase_cost'))
         remarks = none_if_empty(request.form.get('remarks'))
@@ -1178,6 +1204,31 @@ def add_asset():
 
         now = datetime.now()
         is_active = False
+
+        # NEW: Handle category/subcategory creation
+        category_id = request.form.get('category_id')
+        subcategory_id = request.form.get('subcategory_id')
+        new_category = request.form.get('new_category')
+        new_subcategory = request.form.get('new_subcategory')
+
+        # Insert new category if selected
+        if category_id == 'new' and new_category:
+            cur.execute("""
+                INSERT INTO category (name, parent_id, is_active) VALUES (%s, NULL, TRUE) RETURNING id
+            """, (new_category,))
+            category_id = cur.fetchone()[0]
+            conn.commit()
+
+        # Insert new subcategory if selected
+        if subcategory_id == 'new' and new_subcategory and category_id:
+            cur.execute("""
+                INSERT INTO category (name, parent_id, is_active) VALUES (%s, %s, TRUE) RETURNING id
+            """, (new_subcategory, category_id))
+            subcategory_id = cur.fetchone()[0]
+            conn.commit()
+
+        # Final category ID
+        final_category_id = subcategory_id or category_id
 
         cur.execute("""
             SELECT tag FROM asset 
@@ -1241,20 +1292,19 @@ def add_asset():
         if file and allowed_file(file.filename):
             filename = secure_filename(file.filename)
 
-            # Path to save the file
+    # Save path on disk
             file_save_path = os.path.join(upload_folder, filename)
             file.save(file_save_path)
 
-            # Path to store in DB (relative to /static)
-            file_path_for_db = f'uploads/{filename}'
+    # Relative path for DB (normalize slashes for safety)
+            file_path_for_db = f'uploads/{filename}'.replace('\\', '/')
 
             now = datetime.now()
 
             cur.execute("""
-                INSERT INTO files (asset_id, file_name, file_path, uploaded_by, uploaded_at, is_active)
-                VALUES (%s, %s, %s, %s, %s, TRUE)
-                """, (asset_id, filename, file_path_for_db, current_user.id, now))
-
+        INSERT INTO files (asset_id, file_name, file_path, uploaded_by, uploaded_at, is_active)
+        VALUES (%s, %s, %s, %s, %s, TRUE)
+        """, (asset_id, filename, file_path_for_db, current_user.id, now))
 
         conn.commit()
         cur.close()

@@ -133,23 +133,24 @@
           </div>
 
 
-         <!-- Files -->
+         <!-- Uploaded Files -->
 <div class="mb-4">
-  <h5>Files</h5>
-  {% if files and files|length > 0 %}
+  <h5>Uploaded Files</h5>
+  {% if files %}
     <ul class="list-group">
       {% for file in files %}
         <li class="list-group-item">
-          <a href="{{ url_for('static', filename='uploads/' + file['file_name']) }}" target="_blank">
+          <a href="{{ url_for('static', filename=file['file_path']) }}" target="_blank">
             {{ file['file_name'] }}
           </a>
         </li>
       {% endfor %}
     </ul>
   {% else %}
-    <p class="text-muted">No active files uploaded.</p>
+    <p class="text-muted">No files uploaded.</p>
   {% endif %}
 </div>
+
 
 <!-- Assignments -->
           <div class="mb-4">

@@ -61,25 +61,41 @@
                     <label for="description" class="form-label">Description</label>
                     <textarea class="form-control" name="description" rows="2"></textarea>
                 </div>
-                <div class="col-md-6">
-                    <label for="category_id" class="form-label">Category</label>
-                    <select name="category_id" id="category_id" class="form-select" required>
-                    <option value="">-- Select Category --</option>
-                    {% for cat in categories %}
-                        <option value="{{ cat[0] }}">{{ cat[1] }}</option>
-                    {% endfor %}
-                    </select>
-                </div>
+                <!-- Category Dropdown -->
+<div class="mb-3">
+  <label for="category_id" class="form-label">Category</label>
+  <select id="category_id" name="category_id" class="form-select" onchange="filterSubcategories()">
+    <option value="">Select Category</option>
+    {% for category in categories %}
+      <option value="{{ category[0] }}">{{ category[1] }}</option>
+    {% endfor %}
+    <option value="new">+ Add New Category</option>
+  </select>
+</div>
 
-                <div class="col-md-6">
-                    <label for="subcategory_id" class="form-label">Subcategory</label>
-                    <select name="subcategory_id" id="subcategory_id" class="form-select">
-                    <option value="">-- Select Subcategory --</option>
-                    {% for sub in subcategories %}
-                        <option value="{{ sub[0] }}" data-parent="{{ sub[2] }}">{{ sub[1] }}</option>
-                    {% endfor %}
-                    </select>
-                </div>
+<!-- New Category Input -->
+<div class="mb-3" id="new_category_div" style="display: none;">
+  <label for="new_category" class="form-label">New Category Name</label>
+  <input type="text" name="new_category" id="new_category" class="form-control">
+</div>
+
+<!-- Subcategory Dropdown -->
+<div class="mb-3">
+  <label for="subcategory_id" class="form-label">Subcategory</label>
+  <select id="subcategory_id" name="subcategory_id" class="form-select">
+    <option value="">Select Subcategory</option>
+    {% for sub in subcategories %}
+      <option value="{{ sub[0] }}" data-parent="{{ sub[2] }}">{{ sub[1] }}</option>
+    {% endfor %}
+    <option value="new">+ Add New Subcategory</option>
+  </select>
+</div>
+
+<!-- New Subcategory Input -->
+<div class="mb-3" id="new_subcategory_div" style="display: none;">
+  <label for="new_subcategory" class="form-label">New Subcategory Name</label>
+  <input type="text" name="new_subcategory" id="new_subcategory" class="form-control">
+</div>
                 <div class="col-md-6">
                     <label for="purchase_date" class="form-label">Purchase Date</label>
                     <input type="date" class="form-control" name="purchase_date" required>
@@ -203,6 +219,29 @@
   
   <!-- Scripts -->
 <script>
+  
+  function filterSubcategories() {
+    const categoryId = document.getElementById('category_id').value;
+    const subSelect = document.getElementById('subcategory_id');
+    const options = subSelect.querySelectorAll('option[data-parent]');
+
+    options.forEach(option => {
+      option.style.display = (option.getAttribute('data-parent') === categoryId) ? 'block' : 'none';
+    });
+
+    toggleNewCategoryInput();
+  }
+
+  function toggleNewCategoryInput() {
+    const isNew = document.getElementById('category_id').value === 'new';
+    document.getElementById('new_category_div').style.display = isNew ? 'block' : 'none';
+  }
+
+  document.getElementById('subcategory_id').addEventListener('change', function() {
+    const isNew = this.value === 'new';
+    document.getElementById('new_subcategory_div').style.display = isNew ? 'block' : 'none';
+  });
+  
   function resizeIframe(iframe) {
     try {
       const contentHeight = iframe.contentWindow.document.body.scrollHeight;

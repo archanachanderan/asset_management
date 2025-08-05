@@ -76,12 +76,19 @@
 
       <div class="mb-3">
         <label for="role_id" class="form-label">Role</label>
-        <select class="form-select" name="role_id" id="role_id" required>
+        <select name="role_id" id="role_id" class="form-select" onchange="toggleNewRoleInput()">
           <option value="" selected disabled>Select Role</option>
           {% for role in roles %}
             <option value="{{ role[0] }}">{{ role[1] }}</option>
           {% endfor %}
+          <option value="new">Others</option>
         </select>
+      </div>
+
+      <!-- Hidden New Role Input -->
+      <div class="mb-3" id="new_role_div" style="display: none;">
+        <label for="new_role" class="form-label">New Role Name</label>
+        <input type="text" name="new_role" id="new_role" class="form-control">
       </div>
 
       <div class="form-check mb-4">
@@ -106,6 +113,16 @@
 
   <!-- Scripts -->
 <script>
+  function toggleNewRoleInput() {
+    const roleSelect = document.getElementById('role_id');
+    const newRoleDiv = document.getElementById('new_role_div');
+    if (roleSelect.value === 'new') {
+      newRoleDiv.style.display = 'block';
+    } else {
+      newRoleDiv.style.display = 'none';
+    }
+  }
+
   function resizeIframe(iframe) {
     try {
       const contentHeight = iframe.contentWindow.document.body.scrollHeight;
