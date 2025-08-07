@@ -1099,6 +1099,27 @@ def download_qr(asset_tag):
         as_attachment=True,
         download_name=f"{asset_tag}_qr.png"
     )
+
+@app.route('/asset/qr/<string:asset_tag>')
+@login_required
+def view_asset_by_tag(asset_tag):
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+
+    cur.execute("SELECT * FROM asset WHERE asset_tag = %s AND is_active = TRUE", (asset_tag,))
+    asset = cur.fetchone()
+
+    if not asset:
+        conn.close()
+        return "Asset not found", 404
+
+    # Optionally get more info (like category, warranty, etc.)
+    cur.execute("SELECT name FROM category WHERE id = %s", (asset['category_id'],))
+    category = cur.fetchone()
+    category_name = category['name'] if category else "N/A"
+
+    conn.close()
+    return render_template("view_asset.html", asset=asset, category_name=category_name)
     
 @app.route('/view_requests')
 @login_required
