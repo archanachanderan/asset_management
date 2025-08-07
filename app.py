@@ -1247,8 +1247,17 @@ def edit_asset(asset_id):
     conn = get_db_connection()
     cur = conn.cursor()
 
-    cur.execute("SELECT * FROM asset WHERE id = %s", (asset_id,))
+    cur.execute("""
+    SELECT a.*, 
+           subcat.name AS subcategory_name,
+           parentcat.name AS category_name
+    FROM asset a
+    LEFT JOIN category subcat ON a.category_id = subcat.id
+    LEFT JOIN category parentcat ON subcat.parent_id = parentcat.id
+    WHERE a.id = %s
+""", (asset_id,))
     asset = cur.fetchone()
+
     if not asset:
         flash("Asset not found.", "danger")
         return redirect(url_for('view_assets'))
@@ -1358,13 +1367,13 @@ def edit_asset(asset_id):
         # Insurance
         if insurance:
             cur.execute("""UPDATE insurances SET policy_number=%s, provider_details=%s, insured_value=%s,
-            start_date=%s, end_date=%s, provider_contact=%s, is_active=TRUE, isnurance_premium=%s WHERE asset_id=%s""", (policy_number, provider_details, insured_value,
-            start_date, end_date, provider_contact, asset_id, insurance_premium))
+            start_date=%s, end_date=%s, provider_contact=%s, is_active=TRUE, insurance_premium=%s WHERE asset_id=%s""", (policy_number, provider_details, insured_value,
+            start_date, end_date, provider_contact,insurance_premium, asset_id))
         else:
             cur.execute("""INSERT INTO insurances (
             asset_id, policy_number, provider_details, insured_value,
             start_date, end_date, provider_contact, is_active, insurance_premium)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
             """, (asset_id, policy_number, provider_details, insured_value,
         start_date, end_date, provider_contact, True, insurance_premium))
 
@@ -1382,17 +1391,21 @@ def edit_asset(asset_id):
             """, (vendor_name, vendor_email, vendor_phone, vendor_address, asset_id))
 
         # Assignment
+        # Assignment (Handle reassignment with history)
         if assigned_user_id:
             if assignment:
+        # Deactivate old assignment with unassigned_until date
                 cur.execute("""
-                    UPDATE assignments SET user_id=%s, assigned_from=%s, assigned_until=%s, remarks=%s, is_active=TRUE
-                    WHERE asset_id=%s
-                """, (assigned_user_id, assigned_from, assigned_until, remarks, asset_id))
-            else:
-                cur.execute("""
-                    INSERT INTO assignments (asset_id, user_id, assigned_from, assigned_until, remarks, is_active)
-                    VALUES (%s, %s, %s, %s, %s, TRUE)
-                """, (asset_id, assigned_user_id, assigned_from, assigned_until, remarks))
+            UPDATE assignments
+            SET assigned_until = %s, is_active = FALSE
+            WHERE asset_id = %s AND is_active = TRUE
+            """, (assigned_from, asset_id))
+
+    # Insert new assignment
+            cur.execute("""
+        INSERT INTO assignments (asset_id, user_id, assigned_from, assigned_until, remarks, is_active)
+        VALUES (%s, %s, %s, %s, %s, TRUE)
+        """,(asset_id, assigned_user_id, assigned_from, assigned_until, remarks))
 
 
         upload_folder = os.path.join(app.root_path, 'static', 'uploads')
