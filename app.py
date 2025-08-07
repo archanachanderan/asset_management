@@ -288,10 +288,71 @@ def admin_dashboard():
     if 'email' not in session:
         session['email'] = current_user.email
 
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+
+    save_all_notifications()
+
+     # Example counts
+    cur.execute("SELECT COUNT(*) FROM warranty w JOIN asset a ON a.id = w.asset_id WHERE w.is_active = TRUE AND a.is_active = TRUE AND (a.purchase_date + (w.years || ' years')::interval) <= CURRENT_DATE + INTERVAL '30 days'")
+    warranty_expiring_count = cur.fetchone()[0]
+
+    cur.execute("SELECT COUNT(*) FROM insurances i JOIN asset a ON a.id = i.asset_id WHERE i.is_active = TRUE AND a.is_active = TRUE AND i.end_date <= CURRENT_DATE + INTERVAL '30 days'")
+    insurance_expiring_count = cur.fetchone()[0]
+
+    cur.execute("SELECT COUNT(*) FROM requests WHERE status = 'Pending' AND is_active = TRUE")
+    pending_requests_count = cur.fetchone()[0]
+
+    total_count = warranty_expiring_count + insurance_expiring_count + pending_requests_count
+
+    
+    # Existing pending requests
+    cur.execute("""
+        SELECT r.id, r.request_type, u.name AS request_by
+        FROM requests r
+        JOIN user_details u ON r.requested_by = u.id
+        WHERE r.status = 'Pending' AND r.is_active = TRUE
+    """)
+    pending_requests = cur.fetchall()
+    pending_count = len(pending_requests)
+
+    # Warranty expiry in next 30 days
+    cur.execute("""
+        SELECT 
+        a.id AS asset_id,
+        a.asset_name,
+        a.purchase_date,
+        w.years AS warranty_years,
+        (a.purchase_date + (w.years || ' years')::interval) AS expiry_date
+    FROM asset a
+    JOIN warranty w ON a.id = w.asset_id
+    WHERE w.is_active = TRUE
+    AND (a.purchase_date + (w.years || ' years')::interval) <= CURRENT_DATE + INTERVAL '30 days'
+    AND (a.purchase_date + (w.years || ' years')::interval) >= CURRENT_DATE
+    """)
+    expiring_warranties = cur.fetchall()
+
+    # Insurance expiry in next 30 days
+    cur.execute("""
+        SELECT a.asset_name, i.end_date
+    FROM asset a
+    JOIN insurances i ON a.id = i.asset_id
+    WHERE i.is_active = TRUE
+      AND i.end_date <= CURRENT_DATE + INTERVAL '30 days'
+      AND i.end_date >= CURRENT_DATE
+    """)
+    expiring_insurances = cur.fetchall()
+
+    conn.close()
+    cur.close()
+    conn.close()
+
     return render_template(
         'admin_dashboard.html',
         total_assets=0,
+        pending_requests=pending_requests, pending_count=pending_count, expiring_warranties=expiring_warranties, expiring_insurances=expiring_insurances,
         total_users=0,
+        total_count=total_count,
         open_maintenance=0,
         pending_approvals=0,
         recent_logs=[],
@@ -307,10 +368,70 @@ def manager_dashboard():
     if 'email' not in session:
         session['email'] = current_user.email
 
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+
+    save_all_notifications()
+
+     # Example counts
+    cur.execute("SELECT COUNT(*) FROM warranty w JOIN asset a ON a.id = w.asset_id WHERE w.is_active = TRUE AND a.is_active = TRUE AND (a.purchase_date + (w.years || ' years')::interval) <= CURRENT_DATE + INTERVAL '30 days'")
+    warranty_expiring_count = cur.fetchone()[0]
+
+    cur.execute("SELECT COUNT(*) FROM insurances i JOIN asset a ON a.id = i.asset_id WHERE i.is_active = TRUE AND a.is_active = TRUE AND i.end_date <= CURRENT_DATE + INTERVAL '30 days'")
+    insurance_expiring_count = cur.fetchone()[0]
+
+    cur.execute("SELECT COUNT(*) FROM requests WHERE status = 'Pending' AND is_active = TRUE")
+    pending_requests_count = cur.fetchone()[0]
+
+    total_count = warranty_expiring_count + insurance_expiring_count + pending_requests_count
+
+    
+    # Existing pending requests
+    cur.execute("""
+        SELECT r.id, r.request_type, u.name AS request_by
+        FROM requests r
+        JOIN user_details u ON r.requested_by = u.id
+        WHERE r.status = 'Pending' AND r.is_active = TRUE
+    """)
+    pending_requests = cur.fetchall()
+    pending_count = len(pending_requests)
+
+    # Warranty expiry in next 30 days
+    cur.execute("""
+        SELECT 
+        a.id AS asset_id,
+        a.asset_name,
+        a.purchase_date,
+        w.years AS warranty_years,
+        (a.purchase_date + (w.years || ' years')::interval) AS expiry_date
+    FROM asset a
+    JOIN warranty w ON a.id = w.asset_id
+    WHERE w.is_active = TRUE
+    AND (a.purchase_date + (w.years || ' years')::interval) <= CURRENT_DATE + INTERVAL '30 days'
+    AND (a.purchase_date + (w.years || ' years')::interval) >= CURRENT_DATE
+    """)
+    expiring_warranties = cur.fetchall()
+
+    # Insurance expiry in next 30 days
+    cur.execute("""
+        SELECT a.asset_name, i.end_date
+    FROM asset a
+    JOIN insurances i ON a.id = i.asset_id
+    WHERE i.is_active = TRUE
+      AND i.end_date <= CURRENT_DATE + INTERVAL '30 days'
+      AND i.end_date >= CURRENT_DATE
+    """)
+    expiring_insurances = cur.fetchall()
+
+    conn.close()
+    cur.close()
+    conn.close()
     return render_template(
         'manager_dashboard.html',
         total_assets=0,
+        pending_requests=pending_requests, pending_count=pending_count, expiring_warranties=expiring_warranties, expiring_insurances=expiring_insurances,
         total_users=0,
+        total_count=total_count,
         open_maintenance=0,
         pending_approvals=0,
         recent_logs=[],
@@ -326,11 +447,73 @@ def assetentryofficer_dashboard():
     if 'email' not in session:
         session['email'] = current_user.email
 
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+
+    save_all_notifications()
+
+     # Example counts
+    cur.execute("SELECT COUNT(*) FROM warranty w JOIN asset a ON a.id = w.asset_id WHERE w.is_active = TRUE AND a.is_active = TRUE AND (a.purchase_date + (w.years || ' years')::interval) <= CURRENT_DATE + INTERVAL '30 days'")
+    warranty_expiring_count = cur.fetchone()[0]
+
+    cur.execute("SELECT COUNT(*) FROM insurances i JOIN asset a ON a.id = i.asset_id WHERE i.is_active = TRUE AND a.is_active = TRUE AND i.end_date <= CURRENT_DATE + INTERVAL '30 days'")
+    insurance_expiring_count = cur.fetchone()[0]
+
+    cur.execute("SELECT COUNT(*) FROM requests WHERE status = 'Pending' AND is_active = TRUE")
+    pending_requests_count = cur.fetchone()[0]
+
+    total_count = warranty_expiring_count + insurance_expiring_count + pending_requests_count
+
+    
+    # Existing pending requests
+    cur.execute("""
+        SELECT r.id, r.request_type, u.name AS request_by
+        FROM requests r
+        JOIN user_details u ON r.requested_by = u.id
+        WHERE r.status = 'Pending' AND r.is_active = TRUE
+    """)
+    pending_requests = cur.fetchall()
+    pending_count = len(pending_requests)
+
+    # Warranty expiry in next 30 days
+    cur.execute("""
+        SELECT 
+        a.id AS asset_id,
+        a.asset_name,
+        a.purchase_date,
+        w.years AS warranty_years,
+        (a.purchase_date + (w.years || ' years')::interval) AS expiry_date
+    FROM asset a
+    JOIN warranty w ON a.id = w.asset_id
+    WHERE w.is_active = TRUE
+    AND (a.purchase_date + (w.years || ' years')::interval) <= CURRENT_DATE + INTERVAL '30 days'
+    AND (a.purchase_date + (w.years || ' years')::interval) >= CURRENT_DATE
+    """)
+    expiring_warranties = cur.fetchall()
+
+    # Insurance expiry in next 30 days
+    cur.execute("""
+        SELECT a.asset_name, i.end_date
+    FROM asset a
+    JOIN insurances i ON a.id = i.asset_id
+    WHERE i.is_active = TRUE
+      AND i.end_date <= CURRENT_DATE + INTERVAL '30 days'
+      AND i.end_date >= CURRENT_DATE
+    """)
+    expiring_insurances = cur.fetchall()
+
+    conn.close()
+    cur.close()
+    conn.close()
+
+
     # Replace below with actual ORM/db fetch or dummy values for now
     return render_template(
         'assetentryofficer_dashboard.html',
         total_assets=0,
+        pending_requests=pending_requests, pending_count=pending_count, expiring_warranties=expiring_warranties, expiring_insurances=expiring_insurances,
         total_users=0,
+        total_count=total_count,
         open_maintenance=0,
         pending_approvals=0,
         recent_logs=[],
@@ -356,6 +539,81 @@ def technician_dashboard():
         recent_logs=[],
         recent_users=[]
     )
+
+@app.route('/notifications')
+@login_required  # if you want to restrict to logged-in users
+def view_notifications():
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+
+    cur.execute("""
+        SELECT *
+        FROM notification
+        ORDER BY created_at DESC
+    """)
+    notifications = cur.fetchall()
+
+    cur.close()
+    conn.close()
+
+    return render_template('notification.html', notifications=notifications)
+
+
+def save_all_notifications():
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    # Save warranty expiry notifications
+    cur.execute("""
+        SELECT 
+            a.id AS asset_id,
+            a.asset_name,
+            (a.purchase_date + (w.years || ' years')::interval) AS expiry_date
+        FROM asset a
+        JOIN warranty w ON a.id = w.asset_id
+        WHERE w.is_active = TRUE
+        AND (a.purchase_date + (w.years || ' years')::interval) <= CURRENT_DATE + INTERVAL '30 days'
+        AND (a.purchase_date + (w.years || ' years')::interval) >= CURRENT_DATE
+    """)
+    warranties = cur.fetchall()
+    for w in warranties:
+        cur.execute("""
+            INSERT INTO notification (user_id, message, type, related_id)
+            VALUES (%s, %s, %s, %s)
+        """, (
+            None,  # or system user ID
+            f"Warranty for asset '{w[1]}' is expiring on {w[2]}",
+            'warranty',
+            w[0]
+        ))
+
+    # Save insurance expiry notifications
+    cur.execute("""
+        SELECT 
+            a.id AS asset_id,
+            a.asset_name,
+            i.end_date
+        FROM asset a
+        JOIN insurances i ON a.id = i.asset_id
+        WHERE i.is_active = TRUE
+        AND i.end_date <= CURRENT_DATE + INTERVAL '30 days'
+        AND i.end_date >= CURRENT_DATE
+    """)
+    insurances = cur.fetchall()
+    for i in insurances:
+        cur.execute("""
+            INSERT INTO notification(user_id, message, type, related_id)
+            VALUES (%s, %s, %s, %s)
+        """, (
+            None,  # or system user ID
+            f"Insurance for asset '{i[1]}' is expiring on {i[2]}",
+            'insurance',
+            i[0]
+        ))
+
+    conn.commit()
+    cur.close()
+    conn.close()
 
 # ------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -558,11 +816,36 @@ SVE Admin Team
 def view_assets():
     conn = get_db_connection()
     cur = conn.cursor()
-    cur.execute("SELECT a.id, a.tag, a.asset_name FROM asset a where a.is_active = True ")
+    user_pending_requests = []
+    is_asset_entry_officer = current_user.has_role('Asset Entry Officer')
+
+    if is_asset_entry_officer:
+        cur.execute("""
+        SELECT r.id AS request_id, r.asset_id, r.request_type, r.request_date, a.asset_name 
+        FROM requests r
+        JOIN asset a ON r.asset_id = a.id
+        WHERE r.requested_by = %s 
+          AND r.status = 'Pending' 
+          AND r.is_active = TRUE
+        ORDER BY r.request_date DESC
+    """, (current_user.id,))
+        user_pending_requests = cur.fetchall()
+        
+    cur.execute("""
+        SELECT a.id, a.tag, a.asset_name, c.name, a.is_active, a.purchase_date
+        FROM asset a 
+        JOIN category c ON c.id = a.category_id 
+    """)
     assets = cur.fetchall()
+
     cur.close()
     conn.close()
-    return render_template('view_assets.html', assets=assets)
+    return render_template(
+        'view_assets.html',
+        assets=assets,
+        user_pending_requests=user_pending_requests,
+        is_asset_entry_officer=is_asset_entry_officer
+    )
 
 @app.route("/asset/<int:asset_id>")
 def asset_details(asset_id):
@@ -576,19 +859,31 @@ def asset_details(asset_id):
     # Get main asset details
     cur.execute("""
         SELECT 
-            a.id, a.asset_name, a.description, a.purchase_date, 
-            a.purchase_cost, a.remarks, a.is_active, a.tag,
+    a.id,
+    a.asset_name,
+    a.description,
+    a.purchase_date,
+    a.purchase_cost,
+    a.remarks,
+    a.is_active,
+    a.tag,
 
-            child_cat.name AS subcategory,
-            parent_cat.name AS category,
+    -- Subcategory name if present
+    child_cat.name AS subcategory,
+    -- Parent category name if present, else child is itself the category
+    COALESCE(parent_cat.name, child_cat.name) AS category,
 
-            v.name AS vendor_name, v.phone, v.email, v.address
+    v.name AS vendor_name,
+    v.phone,
+    v.email,
+    v.address
 
-        FROM asset a
-        LEFT JOIN category child_cat ON a.category_id = child_cat.id
-        LEFT JOIN category parent_cat ON child_cat.parent_id = parent_cat.id
-        LEFT JOIN vendors v ON a.id = v.asset_id
-        WHERE a.id = %s
+FROM asset a
+LEFT JOIN category child_cat ON a.category_id = child_cat.id
+LEFT JOIN category parent_cat ON child_cat.parent_id = parent_cat.id
+LEFT JOIN vendors v ON a.id = v.asset_id
+WHERE a.id = %s;
+
     """, (asset_id,))
     asset = cur.fetchone()
 
@@ -618,7 +913,7 @@ def asset_details(asset_id):
 
     # Get insurance info
     cur.execute("""
-        SELECT policy_number, provider, insured_value, start_date, end_date
+        SELECT policy_number, provider_details, insured_value, start_date, end_date, insurance_premium
         FROM insurances WHERE asset_id = %s
     """, (asset_id,))
     insurance = cur.fetchone()
@@ -696,7 +991,7 @@ def download_asset_pdf(asset_id):
     warranty = cur.fetchone()
 
     cur.execute("""
-        SELECT policy_number, provider, insured_value, start_date, end_date
+        SELECT policy_number, provider_details, insured_value, start_date, end_date, insurance_premium
         FROM insurances WHERE asset_id = %s
     """, (asset_id,))
     insurance = cur.fetchone()
@@ -763,7 +1058,7 @@ def download_asset_pdf(asset_id):
     pdf.cell(0, 10, "Insurance Info", ln=True)
     pdf.set_font("Arial", '', 10)
     if insurance:
-        pdf.multi_cell(0, 8, f"Policy #: {insurance[0]}\nProvider: {insurance[1]}\nInsured Value: Rs. {insurance[2]}\nStart Date: {insurance[3]}\nEnd Date: {insurance[4]}", border=1)
+        pdf.multi_cell(0, 8, f"Policy #: {insurance[0]}\nProvider Details: {insurance[1]}\nInsured Value: Rs. {insurance[2]}\nStart Date: {insurance[3]}\nEnd Date: {insurance[4]}\nInsurance Premium: {insurance[4]}", border=1)
     else:
         pdf.cell(0, 8, "No insurance info.", ln=True)
 
@@ -817,7 +1112,7 @@ def view_requests():
         FROM requests r
         JOIN asset a ON a.id = r.asset_id
         JOIN user_details u ON u.id = r.requested_by
-        ORDER BY r.request_date DESC
+        ORDER BY (status='Pending') DESC, request_date DESC;
     """)
     requests = cur.fetchall()
 
@@ -876,7 +1171,7 @@ def approve_request_page(request_id):
     files = cur.fetchall()
 
     cur.execute("""
-        SELECT ad.*, u.name AS assigned_user_name
+        SELECT ad.*, u.name AS assigned_user_name, ad.assigned_from, ad.assigned_until, ad.is_active
         FROM assignments ad
         LEFT JOIN user_details u ON ad.user_id = u.id
         WHERE ad.asset_id = %s
@@ -1002,7 +1297,8 @@ def edit_asset(asset_id):
         assigned_until = none_if_empty(request.form.get('assigned_until'))
 
         policy_number = none_if_empty(request.form.get('policy_number'))
-        provider = none_if_empty(request.form.get('provider'))
+        insurance_premium = none_if_empty(request.form.get('insurance_premium'))
+        provider_details = none_if_empty(request.form.get('provider_details'))
         insured_value = parse_float(request.form.get('insured_value'))
         start_date = none_if_empty(request.form.get('start_date'))
         end_date = none_if_empty(request.form.get('end_date'))
@@ -1021,7 +1317,7 @@ def edit_asset(asset_id):
         now = datetime.now()
 
         # Mark existing asset as inactive
-        cur.execute("UPDATE asset SET is_active = FALSE, updated_at = %s WHERE id = %s", (now, asset_id))
+        cur.execute("UPDATE asset SET updated_at = %s WHERE id = %s", (now, asset_id))
 
         # Update asset
         cur.execute("""
@@ -1040,47 +1336,47 @@ def edit_asset(asset_id):
 
         # Warranty
         if warranty:
-            cur.execute("UPDATE warranty SET years=%s, is_active=FALSE WHERE asset_id=%s", (warranty_years, asset_id))
+            cur.execute("UPDATE warranty SET years=%s, is_active=TRUE WHERE asset_id=%s", (warranty_years, asset_id))
         else:
-            cur.execute("INSERT INTO warranty (asset_id, years, is_active) VALUES (%s, %s, FALSE)", (asset_id, warranty_years))
+            cur.execute("INSERT INTO warranty (asset_id, years, is_active) VALUES (%s, %s, TRUE)", (asset_id, warranty_years))
 
         # Insurance
         if insurance:
-            cur.execute("""UPDATE insurances SET policy_number=%s, provider=%s, insured_value=%s,
-            start_date=%s, end_date=%s, provider_contact=%s, is_active=FALSE WHERE asset_id=%s""", (policy_number, provider, insured_value,
-            start_date, end_date, provider_contact, asset_id))
+            cur.execute("""UPDATE insurances SET policy_number=%s, provider_details=%s, insured_value=%s,
+            start_date=%s, end_date=%s, provider_contact=%s, is_active=TRUE, isnurance_premium=%s WHERE asset_id=%s""", (policy_number, provider_details, insured_value,
+            start_date, end_date, provider_contact, asset_id, insurance_premium))
         else:
             cur.execute("""INSERT INTO insurances (
-            asset_id, policy_number, provider, insured_value,
-            start_date, end_date, provider_contact, is_active)
+            asset_id, policy_number, provider_details, insured_value,
+            start_date, end_date, provider_contact, is_active, insurance_premium)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-            """, (asset_id, policy_number, provider, insured_value,
-        start_date, end_date, provider_contact, False))
+            """, (asset_id, policy_number, provider_details, insured_value,
+        start_date, end_date, provider_contact, True, insurance_premium))
 
 
         # Vendor
         if vendor:
             cur.execute("""
-                UPDATE vendors SET name=%s, email=%s, phone=%s, address=%s, is_active=FALSE
+                UPDATE vendors SET name=%s, email=%s, phone=%s, address=%s, is_active=TRUE
                 WHERE asset_id=%s
             """, (vendor_name, vendor_email, vendor_phone, vendor_address, asset_id))
         else:
             cur.execute("""
                 INSERT INTO vendors (name, email, phone, address, is_active, asset_id)
-                VALUES (%s, %s, %s, %s, FALSE, %s)
+                VALUES (%s, %s, %s, %s, TRUE, %s)
             """, (vendor_name, vendor_email, vendor_phone, vendor_address, asset_id))
 
         # Assignment
         if assigned_user_id:
             if assignment:
                 cur.execute("""
-                    UPDATE assignments SET user_id=%s, assigned_from=%s, assigned_until=%s, remarks=%s, is_active=FALSE
+                    UPDATE assignments SET user_id=%s, assigned_from=%s, assigned_until=%s, remarks=%s, is_active=TRUE
                     WHERE asset_id=%s
                 """, (assigned_user_id, assigned_from, assigned_until, remarks, asset_id))
             else:
                 cur.execute("""
                     INSERT INTO assignments (asset_id, user_id, assigned_from, assigned_until, remarks, is_active)
-                    VALUES (%s, %s, %s, %s, %s, FALSE)
+                    VALUES (%s, %s, %s, %s, %s, TRUE)
                 """, (asset_id, assigned_user_id, assigned_from, assigned_until, remarks))
 
 
@@ -1112,15 +1408,18 @@ def edit_asset(asset_id):
     selected_category_id = None
     selected_subcategory_id = None
 
-    if asset and asset[3]:  # Assuming asset[3] is category_id (adjust index if needed)
-        selected_subcategory_id = asset[3]
-
-        cur.execute("SELECT parent_id FROM category WHERE id = %s", (selected_subcategory_id,))
+    if asset and asset[3]:  # Assuming column 3 is category_id
+        category_id = asset[3]
+        cur.execute("SELECT parent_id FROM category WHERE id = %s", (category_id,))
         parent = cur.fetchone()
 
-        if parent and parent[0]:  # parent[0] = parent_id
+        if parent and parent[0]:
+        # asset is linked to a subcategory
+            selected_subcategory_id = category_id
             selected_category_id = parent[0]
-
+        else:
+        # asset is linked to a top-level category
+            selected_category_id = category_id
 
     return render_template('edit_asset.html', asset=asset, warranty=warranty, insurance=insurance,
                            vendor=vendor, assignment=assignment, categories=categories, users=users, selected_category_id=selected_category_id,
@@ -1191,11 +1490,12 @@ def add_asset():
         assigned_until = none_if_empty(request.form.get('assigned_until'))
 
         policy_number = none_if_empty(request.form.get('policy_number'))
-        provider = none_if_empty(request.form.get('provider'))
+        provider_details = none_if_empty(request.form.get('provider_details'))
         insured_value = none_if_empty(request.form.get('insured_value'))
         start_date = none_if_empty(request.form.get('start_date'))
         end_date = none_if_empty(request.form.get('end_date'))
         provider_contact = none_if_empty(request.form.get('provider_contact'))
+        insurance_premium = none_if_empty(request.form.get('insurance_premium'))
 
         vendor_name = none_if_empty(request.form.get('vendor_name'))
         vendor_email = none_if_empty(request.form.get('vendor_email'))
@@ -1247,7 +1547,7 @@ def add_asset():
         # Asset table
         cur.execute("""INSERT INTO asset (asset_name, description, category_id, purchase_date, purchase_cost, is_active, created_at, updated_at, tag, remarks, parent_asset_id
             ) VALUES (%s, %s, %s, %s, %s, FALSE, %s, %s, %s, %s, %s) RETURNING id
-            """, (asset_name, description, category_id, purchase_date, purchase_cost, now, now, tag, remarks, parent_asset_id))
+            """, (asset_name, description, final_category_id, purchase_date, purchase_cost, now, now, tag, remarks, parent_asset_id))
         asset_id = cur.fetchone()[0]
 
         # Request entry
@@ -1260,15 +1560,15 @@ def add_asset():
         cur.execute("""
             INSERT INTO warranty (asset_id, years, is_active)
             VALUES (%s, %s, %s)
-        """, (asset_id, warranty_years, is_active))
+        """, (asset_id, warranty_years, True))
 
         # Insurance
         cur.execute("""
             INSERT INTO insurances (
-                asset_id, policy_number, provider, insured_value, start_date,
-                end_date, provider_contact, is_active
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-        """, (asset_id, policy_number, provider, insured_value, start_date, end_date, provider_contact, is_active))
+                asset_id, policy_number,  provider_details , insured_value, start_date,
+                end_date, provider_contact, is_active, insurance_premium
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """, (asset_id, policy_number,  provider_details , insured_value, start_date, end_date, provider_contact, True , insurance_premium))
 
         # Vendor
         cur.execute("""
@@ -1348,7 +1648,7 @@ def add_maintenance():
         # Insert maintenance as inactive
         cur.execute("""
             INSERT INTO maintenance (asset_id, task_done, maintenance_date, cost, service_by, has_parts_involved, is_active)
-            VALUES (%s, %s, %s, %s, %s, %s, FALSE)
+            VALUES (%s, %s, %s, %s, %s, %s, TRUE)
             RETURNING id
         """, (asset_id, task_done, maintenance_date, cost, service_by, has_parts))
         maintenance_id = cur.fetchone()[0]
@@ -1425,7 +1725,7 @@ def add_parts():
         cur.execute("""
             INSERT INTO asset (asset_name, description, category_id, purchase_date, purchase_cost, is_active,
                                created_at, updated_at, tag, remarks, parent_asset_id)
-            VALUES (%s, %s, %s, %s, %s, FALSE, %s, %s, %s, %s, %s)
+            VALUES (%s, %s, %s, %s, %s, TRUE, %s, %s, %s, %s, %s)
             RETURNING id
         """, (asset_name, description, category_id, purchase_date, purchase_cost, now, now, tag, remarks, parent_asset_id))
         asset_id = cur.fetchone()[0]
@@ -1438,7 +1738,7 @@ def add_parts():
         cur.execute("""
             INSERT INTO warranty (asset_id, years, is_active)
             VALUES (%s, %s, %s)
-        """, (asset_id, warranty_years, is_active))
+        """, (asset_id, warranty_years, True))
 
         cur.execute("""
             INSERT INTO vendors (name, email, phone, address, is_active, asset_id)

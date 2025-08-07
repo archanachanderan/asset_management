@@ -16,15 +16,11 @@
   <header>
     <nav class="navbar navbar-expand-lg navbar-light bg-white fixed-top shadow py-2">
       <div class="container-fluid">
-        <p class="navbar-brand text-danger fw-bold fs-2 my-0 d-flex align-items-center">
+        <p class="navbar-brand text-danger fw-bold fs-2 my-0 d-flex align-items-center" style="font-family: 'Times New Roman', Times, serif;">
           <img src="{{ url_for('static', filename='images/logo.jpg') }}" alt="Logo" height="40" class="me-2">
           SREE VENKATESHWARA ENTERPRISES
         </p>
         <div class="d-flex align-items-center">
-          <a class="btn btn-white me-2 fs-5 fw-bold py-2 px-4" href="{{ url_for('welcome') }}#product-frame">Product</a>
-          <a class="btn btn-white me-2 fs-5 fw-bold py-2 px-4" href="{{ url_for('welcome') }}#about-frame">About SVE</a>
-          <a class="btn btn-white me-2 fs-5 fw-bold py-2 px-4" href="{{ url_for('welcome') }}#contact-frame">Contact</a>
-          <a class="btn btn-white me-2 fs-5 fw-bold py-2 px-4" href="{{ url_for('login') }}?animate=true">Inventory</a>
           {% if session.email %}
             <div class="ms-3 d-flex align-items-center">
               <i class="bi bi-person-circle fs-4 me-2"></i>
@@ -88,8 +84,12 @@
               <h5>Insurance</h5>
               {% if insurance %}
                 <ul class="list-group">
-                  <li class="list-group-item"><strong>Provider:</strong> {{ insurance.provider }}</li>
+                  <li class="list-group-item"><strong>Provider Details:</strong> {{ insurance.provider_details }}</li>
+                  <li class="list-group-item"><strong>Start Date:</strong> {{ insurance.start_date }}</li>
                   <li class="list-group-item"><strong>Expiry Date:</strong> {{ insurance.expiry_date }}</li>
+                  <li class="list-group-item"><strong>Policy Number:</strong> {{ insurance.policy_number }}</li>
+                  <li class="list-group-item"><strong>Insured Value</strong> {{ insurance.insured_value }}</li>
+                  <li class="list-group-item"><strong>Premium Amount</strong> {{ insurance.insurance_premium }}</li>
                 </ul>
               {% else %}
                 <p class="text-muted">No insurance data available.</p>
@@ -128,7 +128,9 @@
             {% if vendor %}
               <ul class="list-group">
                 <li class="list-group-item"><strong>Name:</strong> {{ vendor.name }}</li>
-                <li class="list-group-item"><strong>Contact:</strong> {{ vendor.contact }}</li>
+                <li class="list-group-item"><strong>Contact:</strong> {{ vendor.phone }}</li>
+                <li class="list-group-item"><strong>Address:</strong> {{ vendor.address }}</li>
+                <li class="list-group-item"><strong>Email:</strong> {{ vendor.email }}</li>
               </ul>
             {% else %}
               <p class="text-muted">No vendor data available.</p>
@@ -163,16 +165,18 @@
                 <thead>
                   <tr>
                     <th>User</th>
-                    <th>Assigned On</th>
-                    <th>Return Date</th>
+                    <th>Assigned From</th>
+                    <th>Assigned Until</th>
+                    <th>Is Active</th>
                   </tr>
                 </thead>
                 <tbody>
                   {% for assign in assignments %}
                     <tr>
                       <td>{{ assign.assigned_user_name }}</td>
-                      <td>{{ assign.assigned_at }}</td>
-                      <td>{{ assign.return_date or 'N/A' }}</td>
+                      <td>{{ assign.assigned_from }}</td>
+                      <td>{{ assign.assigned_until }}</td>
+                      <td>{{ assign.is_active or 'N/A' }}</td>
                     </tr>
                   {% endfor %}
                 </tbody>
@@ -220,6 +224,13 @@
       });
     });
   </script>
+  <script>
+  function toggleSidebar() {
+    const sidebar = document.querySelector('.sidebar');
+    sidebar.classList.toggle('active');
+  }
+</script>
+
 
   <!-- AOS Animation Library -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.js"></script>

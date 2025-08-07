@@ -16,20 +16,16 @@
   <header>
     <nav class="navbar navbar-expand-lg navbar-light bg-white fixed-top shadow py-2">
       <div class="container-fluid">
-        <p class="navbar-brand text-danger fw-bold fs-2 my-0 d-flex align-items-center">
+        <p class="navbar-brand text-danger fw-bold fs-2 my-0 d-flex align-items-center" style="font-family: 'Times New Roman', Times, serif;">
           <img src="{{ url_for('static', filename='images/logo.jpg') }}" alt="Logo" height="40" class="me-2">
           SREE VENKATESHWARA ENTERPRISES
         </p>
         <div class="d-flex align-items-center">
-          <a class="btn btn-white me-2 fs-5 fw-bold py-2 px-4" href="{{ url_for('welcome') }}#product-frame">Product</a>
-          <a class="btn btn-white me-2 fs-5 fw-bold py-2 px-4" href="{{ url_for('welcome') }}#about-frame">About SVE</a>
-          <a class="btn btn-white me-2 fs-5 fw-bold py-2 px-4" href="{{ url_for('welcome') }}#contact-frame">Contact</a>
-          <a class="btn btn-white me-2 fs-5 fw-bold py-2 px-4" href="{{ url_for('login') }}?animate=true">Inventory</a>
           {% if session.email %}
-            <div class="ms-3 d-flex align-items-center">
+          <div class="ms-3 d-flex align-items-center">
             <i class="bi bi-person-circle fs-4 me-2"></i>
             <span class="fw-bold">{{ session.email }}</span>
-            </div>
+          </div>
           {% endif %}
         </div>
       </div>
@@ -37,97 +33,150 @@
   </header>
 
   <!-- Mobile Menu Button -->
-<div class="mobile-nav-toggle d-lg-none ms-3" onclick="toggleSidebar()">☰ Menu</div>
+  <div class="mobile-nav-toggle d-lg-none ms-3" onclick="toggleSidebar()">☰ Menu</div>
 
-
-  <div class="sidebar" >
-  {% if session.role == 'Super Admin' %}
-  <h4 class="text-center fw-bold display-5 text-danger d-block py-2" >Admin</h4>
-  {% endif %}
-  {% if session.role == 'Asset Manager' %}
-  <h4 class="text-center fw-bold display-5 text-danger d-block py-2" >Manager</h4>
-  {% endif %}
-  {% if session.role == 'Asset Entry Officer' %}
-  <h4 class="text-center fw-bold display-5 text-danger d-block py-2" >Asset Entry Officer</h4>
-  {% endif %}
-  {% if session.role == 'Super Admin' %}
-  <a href="{{ url_for('admin_dashboard') }}" class="text-danger d-block py-2">Dashboard</a>
-  {% endif %}
-  {% if session.role == 'Asset Manager' %}
-  <a href="{{ url_for('manager_dashboard') }}" class="text-danger d-block py-2">Dashboard</a>
-  {% endif %}
-  {% if session.role == 'Asset Entry Officer' %}
-  <a href="{{ url_for('assetentryofficer_dashboard') }}" class="text-danger d-block py-2">Dashboard</a>
-  {% endif %}
-  {% if session.role == 'Super Admin' %}
-  <a href="{{ url_for('view_users') }}" class="text-danger d-block py-2">View Users</a>
-  {% endif %}
-  {% if session.role == 'Asset Manager' %}
-  <a href="{{ url_for('view_users') }}" class="text-danger d-block py-2">View Users</a>
-  {% endif %}
-  <a href="{{ url_for('view_assets') }}" class="text-danger d-block py-2">View Asset</a>
-  {% if session.role == 'Asset Manager' %}
-    <a href="{{ url_for('view_requests') }}" class="text-danger d-block py-2">View Requests</a>
-  {% endif %}
-  <a href="{{ url_for('change_password') }}" class="text-danger d-block py-2">Change Password</a>
-  <a href="{{ url_for('logout') }}" class="text-danger d-block py-2">Logout</a>
-</div>
-
-  <div class="content mt-5 pt-5">
-  <h2 class="mb-4 text-center">All Assets</h2>
-  <div class="row">
-    {% for asset in assets %}
-    <div class="col-md-4 mb-4">
-      <a href="{{ url_for('asset_details', asset_id=asset[0]) }}" class="text-decoration-none">
-        <div class="card shadow h-100">
-          <div class="card-body d-flex justify-content-between align-items-center">
-            <h5 class="card-title">{{ asset[2] }}</h5> 
-            <i class="bi bi-box-seam fs-3 text-primary"></i>
-          </div>
-          <div class="card-footer text-muted">
-            Tag: {{ asset[1] }}
-          </div>
-        </div>
-      </a>
-    </div>
-    {% endfor %}
+  <!-- Sidebar -->
+  <div class="sidebar">
+    {% if session.role == 'Super Admin' %}
+      <h4 class="text-center fw-bold display-5 text-danger d-block py-2">Admin</h4>
+      <a href="{{ url_for('admin_dashboard') }}" class="text-danger d-block py-2">Dashboard</a>
+      <a href="{{ url_for('view_users') }}" class="text-danger d-block py-2">View Users</a>
+    {% endif %}
+    {% if session.role == 'Asset Manager' %}
+      <h4 class="text-center fw-bold display-5 text-danger d-block py-2">Manager</h4>
+      <a href="{{ url_for('manager_dashboard') }}" class="text-danger d-block py-2">Dashboard</a>
+      <a href="{{ url_for('view_users') }}" class="text-danger d-block py-2">View Users</a>
+      <a href="{{ url_for('view_requests') }}" class="text-danger d-block py-2">View Requests</a>
+    {% endif %}
+    {% if session.role == 'Asset Entry Officer' %}
+      <h4 class="text-align fw-bold fs-1 text-danger d-block py-2">Asset Entry Officer</h4>
+      <a href="{{ url_for('assetentryofficer_dashboard') }}" class="text-danger d-block py-2">Dashboard</a>
+      <a href="{{ url_for('add_asset') }}" class="text-danger d-block py-2">Add Asset</a>
+    {% endif %}
+    <a href="{{ url_for('view_assets') }}" class="text-danger d-block py-2">View Asset</a>
+    <a href="{{ url_for('change_password') }}" class="text-danger d-block py-2">Change Password</a>
+    <a href="{{ url_for('logout') }}" class="text-danger d-block py-2">Logout</a>
   </div>
-  {% if session.role == 'Asset Entry Officer' %}
-    <a href="{{ url_for('add_asset') }}" class="btn btn-danger mt-3">Add Asset</a>
+
+  <!-- Content -->
+  <div class="content mt-5 pt-5">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="mb-0">All Asset</h1>
+    <input type="text" id="assetSearch" class="form-control" placeholder="Search assets..." style="max-width: 300px;">
+  </div>
+  
+
+    <div class="table-responsive">
+      {% if is_asset_entry_officer %}
+  <h4 class="mt-4">Your Pending Requests</h4>
+  {% if user_pending_requests %}
+  <table class="table table-bordered table-hover"  id="assetTable">
+    <thead class="table-danger">
+      <tr>
+        <th>Asset</th>
+        <th>Type</th>
+        <th>Date</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for req in user_pending_requests %}
+      <tr>
+        <td>{{ req[4] }}</td>
+        <td>{{ req[2] }}</td>
+        <td>{{ req[3] }}</td>
+        <td>
+          <a href="{{ url_for('edit_asset', asset_id=req[1]) }}" class="btn btn-danger btn-sm">Edit</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="text-muted">No pending requests submitted by you.</p>
   {% endif %}
-</div>
+{% endif %}
+
+      <table class="table table-hover align-middle shadow" id="assetTable">
+        <h4 class="mt-4">Assets</h4>
+        <thead class="table-primary">
+          <tr>
+            <th>Tag</th>
+            <th>Asset Name</th>
+            <th>Category</th>
+            <th>Is Active</th>
+            <th>Purchase Date</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for asset in assets %}
+          <tr onclick="window.location='{{ url_for('asset_details', asset_id=asset[0]) }}';" style="cursor:pointer;">
+            <td>{{ asset[1] }}</td>
+            <td>{{ asset[2] }}</td>
+            <td>{{ asset[3] }}</td>
+            <td>{{ asset[4] }}</td>
+            <td>{{ asset[5] }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
 
   <!-- Scripts -->
-<script>
+   <script>
   function toggleSidebar() {
     const sidebar = document.querySelector('.sidebar');
     sidebar.classList.toggle('active');
   }
-  function resizeIframe(iframe) {
-    try {
-      const contentHeight = iframe.contentWindow.document.body.scrollHeight;
-      iframe.style.height = contentHeight + "px";
-    } catch (e) {
-      console.warn("Iframe content could not be resized:", e);
-    }
-  }
+</script>
 
-  document.addEventListener("DOMContentLoaded", () => {
-    document.querySelectorAll("iframe").forEach(iframe => {
-      iframe.addEventListener("load", () => resizeIframe(iframe));
+  <script>
+    document.getElementById('assetSearch').addEventListener('keyup', function() {
+      const searchValue = this.value.toLowerCase();
+      const rows = document.querySelectorAll('#assetTable tbody tr');
+
+      rows.forEach(row => {
+        const cells = row.getElementsByTagName('td');
+        let match = false;
+
+        for (let i = 0; i < cells.length; i++) {
+          if (cells[i].innerText.toLowerCase().includes(searchValue)) {
+            match = true;
+            break;
+          }
+        }
+        row.style.display = (searchValue === '' || match) ? '' : 'none';
+      });
     });
-  });
-</script>
 
-<!-- AOS Animation Library -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.js"></script>
-<script>
-  AOS.init({
-    once: true, // Animate only once per element
-    duration: 2000 // Optional: animation duration
-  });
-</script>
+    function toggleSidebar() {
+      document.querySelector('.sidebar').classList.toggle('active');
+    }
 
+    function resizeIframe(iframe) {
+      try {
+        const contentHeight = iframe.contentWindow.document.body.scrollHeight;
+        iframe.style.height = contentHeight + "px";
+      } catch (e) {
+        console.warn("Iframe content could not be resized:", e);
+      }
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      document.querySelectorAll("iframe").forEach(iframe => {
+        iframe.addEventListener("load", () => resizeIframe(iframe));
+      });
+    });
+  </script>
+
+  <!-- AOS Animation Library -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.js"></script>
+  <script>
+    AOS.init({
+      once: true,
+      duration: 2000
+    });
+  </script>
 </body>
-</html>  
-
+</html>

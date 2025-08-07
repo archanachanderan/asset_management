@@ -16,102 +16,117 @@
   <header>
     <nav class="navbar navbar-expand-lg navbar-light bg-white fixed-top shadow py-2">
       <div class="container-fluid">
-        <p class="navbar-brand text-danger fw-bold fs-2 my-0 d-flex align-items-center">
+        <p class="navbar-brand text-danger fw-bold fs-2 my-0 d-flex align-items-center" style="font-family: 'Times New Roman', Times, serif;">
           <img src="{{ url_for('static', filename='images/logo.jpg') }}" alt="Logo" height="40" class="me-2">
           SREE VENKATESHWARA ENTERPRISES
         </p>
         <div class="d-flex align-items-center">
-          <a class="btn btn-white me-2 fs-5 fw-bold py-2 px-4" href="{{ url_for('welcome') }}#product-frame">Product</a>
-          <a class="btn btn-white me-2 fs-5 fw-bold py-2 px-4" href="{{ url_for('welcome') }}#about-frame">About SVE</a>
-          <a class="btn btn-white me-2 fs-5 fw-bold py-2 px-4" href="{{ url_for('welcome') }}#contact-frame">Contact</a>
-          <a class="btn btn-white me-2 fs-5 fw-bold py-2 px-4" href="{{ url_for('login') }}?animate=true">Inventory</a>
           {% if session.email %}
             <div class="ms-3 d-flex align-items-center">
-            <i class="bi bi-person-circle fs-4 me-2"></i>
-            <span class="fw-bold">{{ session.email }}</span>
+              <i class="bi bi-person-circle fs-4 me-2"></i>
+              <span class="fw-bold">{{ session.email }}</span>
             </div>
           {% endif %}
         </div>
       </div>
     </nav>
   </header>
-  <!-- Mobile Menu Button -->
-<div class="mobile-nav-toggle d-lg-none ms-3" onclick="toggleSidebar()">☰ Menu</div>
 
+  <!-- Mobile Menu Button -->
+  <div class="mobile-nav-toggle d-lg-none ms-3" onclick="toggleSidebar()">☰ Menu</div>
 
   <!-- Sidebar -->
-<div class="sidebar" >
-  <h4 class="text-center fw-bold display-5 text-danger d-block py-2" >Manager</h4>
-  <a href="{{ url_for('manager_dashboard') }}" class="text-danger d-block py-2">Dashboard</a>
-  <a href="{{ url_for('view_users') }}" class="text-danger d-block py-2">View Users</a>
-  <a href="{{ url_for('view_assets') }}" class="text-danger d-block py-2">View Assets</a>
-  <a href="{{ url_for('view_requests') }}" class="text-danger d-block py-2">View Requests</a>
-  <a href="{{ url_for('change_password') }}" class="text-danger d-block py-2">Change Password</a>
-  <a href="{{ url_for('logout') }}" class="text-danger d-block py-2">Logout</a>
-</div>
+  <div class="sidebar">
+    <h4 class="text-center fw-bold display-5 text-danger d-block py-2">Manager</h4>
+    <a href="{{ url_for('manager_dashboard') }}" class="text-danger d-block py-2">Dashboard</a>
+    <a href="{{ url_for('view_users') }}" class="text-danger d-block py-2">View Users</a>
+    <a href="{{ url_for('view_assets') }}" class="text-danger d-block py-2">View Assets</a>
+    <a href="{{ url_for('view_requests') }}" class="text-danger d-block py-2">View Requests</a>
+    <a href="{{ url_for('change_password') }}" class="text-danger d-block py-2">Change Password</a>
+    <a href="{{ url_for('logout') }}" class="text-danger d-block py-2">Logout</a>
+  </div>
 
+  <!-- Main Content -->
   <div class="content mt-5 pt-5">
-        <h1>All Asset Requests</h1>
+    <div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="mb-0">All Asset Requests</h1>
+    <input type="text" id="requestSearch" class="form-control" placeholder="Search requests..." style="max-width: 300px;">
+  </div>
 
-    <table border="1">
-        <thead>
-            <tr>
-                <th>Request ID</th>
-                <th>Asset Name</th>
-                <th>Type</th>
-                <th>Requested By</th>
-                <th>Requested Date</th>
-                <th>Status</th>
-                <th>Action</th>
-            </tr>
+    <div class="table-responsive">
+      <table class="table table-hover align-middle shadow" id="requestTable">
+        <thead class="table-primary">
+          <tr>
+            <th>Request ID</th>
+            <th>Asset Name</th>
+            <th>Type</th>
+            <th>Requested By</th>
+            <th>Requested Date</th>
+            <th>Status</th>
+            <th>Action</th>
+          </tr>
         </thead>
         <tbody>
         {% for r in requests %}
-            <tr>
-                <td>{{ r.id }}</td>
-                <td>{{ r.asset_name }}</td>
-                <td>{{ r.request_type }}</td>
-                <td>{{ r.requested_by }}</td>
-                <td>{{ r.request_date.strftime("%Y-%m-%d") }}</td>
-                <td>{{ r.status }}</td>
-                <td>
-                    <a class="btn btn-primary me-2 " href="{{ url_for('approve_request_page', request_id=r.id) }}">View</a>
-                </td>
-            </tr>
+          <tr>
+            <td>{{ r.id }}</td>
+            <td>{{ r.asset_name }}</td>
+            <td>{{ r.request_type }}</td>
+            <td>{{ r.requested_by }}</td>
+            <td>{{ r.request_date.strftime("%Y-%m-%d") }}</td>
+            <td>{{ r.status }}</td>
+            <td>
+              <a class="btn btn-primary btn-sm" href="{{ url_for('approve_request_page', request_id=r.id) }}">View</a>
+            </td>
+          </tr>
         {% endfor %}
         </tbody>
-    </table>
-    
+      </table>
+    </div>
   </div>
 
-  
   <!-- Scripts -->
-<script>
+  <script>
+    function toggleSidebar() {
+      const sidebar = document.querySelector('.sidebar');
+      sidebar.classList.toggle('active');
+    }
+
+    // Search filter
+    document.getElementById('requestSearch').addEventListener('keyup', function() {
+      const searchValue = this.value.toLowerCase();
+      const rows = document.querySelectorAll('#requestTable tbody tr');
+
+      rows.forEach(row => {
+        const text = row.textContent.toLowerCase();
+        row.style.display = text.includes(searchValue) ? '' : 'none';
+      });
+    });
+
+    // Move Pending rows on top
+    document.addEventListener("DOMContentLoaded", function() {
+      const tbody = document.querySelector("#requestTable tbody");
+      const rows = Array.from(tbody.querySelectorAll("tr"));
+      rows.sort((a, b) => {
+        const statusA = a.cells[5].innerText.trim().toLowerCase();
+        const statusB = b.cells[5].innerText.trim().toLowerCase();
+        return (statusA === "pending" ? -1 : 1) - (statusB === "pending" ? -1 : 1);
+      });
+      rows.forEach(row => tbody.appendChild(row));
+    });
+  </script>
+  <script>
   function toggleSidebar() {
     const sidebar = document.querySelector('.sidebar');
     sidebar.classList.toggle('active');
   }
-  function resizeIframe(iframe) {
-    try {
-      const contentHeight = iframe.contentWindow.document.body.scrollHeight;
-      iframe.style.height = contentHeight + "px";
-    } catch (e) {
-      console.warn("Iframe content could not be resized:", e);
-    }
-  }
-
-  document.addEventListener("DOMContentLoaded", () => {
-    document.querySelectorAll("iframe").forEach(iframe => {
-      iframe.addEventListener("load", () => resizeIframe(iframe));
-    });
-  });
 </script>
 
-<!-- AOS Animation Library -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.js"></script>
-<script>
-  AOS.init({
-    once: true, // Animate only once per element
-    duration: 2000 // Optional: animation duration
-  });
-</script>
+
+  <!-- AOS Animation Library -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.js"></script>
+  <script>
+    AOS.init({ once: true, duration: 2000 });
+  </script>
+</body>
+</html>

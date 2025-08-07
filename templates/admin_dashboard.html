@@ -9,6 +9,32 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
   <link href="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.css" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+  <style>
+    .custom-dropdown {
+      display: none;
+      position: absolute;
+      top: 100px; /* adjust where it should appear */
+      right: 50px; /* adjust to align with your layout */
+      z-index: 2000;
+      background: white;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+      min-width: 250px;
+    }
+    .custom-dropdown.active {
+      display: block;
+    }
+    .custom-dropdown a {
+      display: block;
+      padding: 10px;
+      color: #333;
+      text-decoration: none;
+    }
+    .custom-dropdown a:hover {
+      background: #f5f5f5;
+    }
+  </style>
 </head>
 
 <body class="bg-light">
@@ -16,16 +42,19 @@
   <header>
     <nav class="navbar navbar-expand-lg navbar-light bg-white fixed-top shadow py-2">
       <div class="container-fluid">
-        <p class="navbar-brand text-danger fw-bold fs-2 my-0 d-flex align-items-center">
+        <p class="navbar-brand text-danger fw-bold fs-2 my-0 d-flex align-items-center" style="font-family: 'Times New Roman', Times, serif;">
           <img src="{{ url_for('static', filename='images/logo.jpg') }}" alt="Logo" height="40" class="me-2">
           SREE VENKATESHWARA ENTERPRISES
         </p>
         <div class="d-flex align-items-center">
-          <div class="mobile-nav-toggle d-lg-none ms-3" onclick="toggleSidebar()">☰ Menu</div>
-          <a class="btn btn-white me-2 fs-5 fw-bold py-2 px-4" href="{{ url_for('welcome') }}#product-frame">Product</a>
-          <a class="btn btn-white me-2 fs-5 fw-bold py-2 px-4" href="{{ url_for('welcome') }}#about-frame">About SVE</a>
-          <a class="btn btn-white me-2 fs-5 fw-bold py-2 px-4" href="{{ url_for('welcome') }}#contact-frame">Contact</a>
-          <a class="btn btn-white me-2 fs-5 fw-bold py-2 px-4" href="{{ url_for('login') }}?animate=true">Inventory</a>
+          <button id="notifBtn" class="btn btn-light position-relative">
+          <i class="bi bi-bell fs-4"></i>
+          {% if total_count > 0 %}
+          <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+            {{ total_count }}
+          </span>
+          {% endif %}
+        </button>
           {% if session.email %}
             <div class="ms-3 d-flex align-items-center">
             <i class="bi bi-person-circle fs-4 me-2"></i>
@@ -50,12 +79,71 @@
   <a href="{{ url_for('logout') }}" class="text-danger d-block py-2">Logout</a>
 </div>
 
+<div id="notifDropdown" class="custom-dropdown">
+
+  <!-- Pending Requests -->
+  {% if pending_requests %}
+    {% for req in pending_requests %}
+      <a href="{{ url_for('approve_request_page', request_id=req.id) }}">
+        Request to {{ req.request_type }} by {{ req.request_by }}
+      </a>
+    {% endfor %}
+  {% endif %}
+
+  <!-- Warranty Expiry -->
+  {% if expiring_warranties %}
+    <hr class="my-1">
+    {% for warranty in expiring_warranties %}
+      <a href="#">
+        Warranty expiring for {{ warranty.asset_name }} on {{ warranty.expiry_date }}
+      </a>
+    {% endfor %}
+  {% endif %}
+
+  <!-- Insurance Expiry -->
+  {% if expiring_insurances %}
+    <hr class="my-1">
+    {% for insurance in expiring_insurances %}
+      <a href="#">
+        Insurance expiring for {{ insurance.asset_name }} on {{ insurance.expiry_date }}
+      </a>
+    {% endfor %}
+  {% endif %}
+
+  {% if not pending_requests and not expiring_warranties and not expiring_insurances %}
+    <span class="d-block p-2 text-muted">No notifications</span>
+  {% else %}
+    <hr class="my-1">
+    <a href="{{ url_for('view_requests') }}" class="text-primary">View All Pending Requests</a>
+    <a href="{{ url_for('view_notifications') }}" class="text-primary">View All Notifications</a>
+  {% endif %}
+
+</div>
+
+
 <div class="content mt-5">
 
   <iframe width="900" height="675" src="https://lookerstudio.google.com/embed/reporting/97f0ca9f-4a2b-4995-a3af-d4b67ae9930f/page/Ro2SF" frameborder="0" style="border: 0; overflow: hidden; display: block;" allowfullscreen sandbox="allow-storage-access-by-user-activation allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox"></iframe>
   
 </div>
   <!-- Scripts -->
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    const notifBtn = document.getElementById('notifBtn');
+    const notifDropdown = document.getElementById('notifDropdown');
+
+    notifBtn.addEventListener('click', function() {
+      notifDropdown.classList.toggle('active');
+    });
+
+    // Close dropdown if clicking elsewhere
+    document.addEventListener('click', function(e) {
+      if (!notifBtn.contains(e.target) && !notifDropdown.contains(e.target)) {
+        notifDropdown.classList.remove('active');
+      }
+    });
+  </script>  
 <script>
   function toggleSidebar() {
     const sidebar = document.querySelector('.sidebar');
@@ -85,3 +173,12 @@
     duration: 2000 // Optional: animation duration
   });
 </script>
+<script>
+  function toggleSidebar() {
+    const sidebar = document.querySelector('.sidebar');
+    sidebar.classList.toggle('active');
+  }
+</script>
+
+</body>
+</html>

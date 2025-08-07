@@ -14,17 +14,13 @@
 <body class="bg-light">
   <!-- Navbar -->
   <header>
-    <nav class="navbar navbar-expand-lg navbar-light bg-white fixed-top shadow py-2">
+    <nav class="navbar navbar-expand-lg navbar-light bg-white fixed-top shadow py-2" >
       <div class="container-fluid">
-        <p class="navbar-brand text-danger fw-bold fs-2 my-0 d-flex align-items-center">
+        <p class="navbar-brand text-danger fw-bold fs-2 my-0 d-flex align-items-center" style="font-family: 'Times New Roman', Times, serif;">
           <img src="{{ url_for('static', filename='images/logo.jpg') }}" alt="Logo" height="40" class="me-2">
           SREE VENKATESHWARA ENTERPRISES
         </p>
         <div class="d-flex align-items-center">
-          <a class="btn btn-white me-2 fs-5 fw-bold py-2 px-4" href="{{ url_for('welcome') }}#product-frame">Product</a>
-          <a class="btn btn-white me-2 fs-5 fw-bold py-2 px-4" href="{{ url_for('welcome') }}#about-frame">About SVE</a>
-          <a class="btn btn-white me-2 fs-5 fw-bold py-2 px-4" href="{{ url_for('welcome') }}#contact-frame">Contact</a>
-          <a class="btn btn-white me-2 fs-5 fw-bold py-2 px-4" href="{{ url_for('login') }}?animate=true">Inventory</a>
           {% if session.email %}
             <div class="ms-3 d-flex align-items-center">
             <i class="bi bi-person-circle fs-4 me-2"></i>
@@ -41,8 +37,9 @@
 
   <!-- Sidebar -->
 <div class="sidebar" >
-  <h4 class="text-center fw-bold display-5 text-danger d-block py-2" >Asset Entry Officer</h4>
+  <h4 class="fw-bold fs-1 text-danger d-block" >Asset Entry Officer</h4>
   <a href="{{ url_for('assetentryofficer_dashboard') }}" class="text-danger d-block py-2">Dashboard</a>
+  <a href="{{ url_for('add_asset') }}" class="text-danger d-block py-2">Add Asset</a>
   <a href="{{ url_for('view_assets') }}" class="text-danger d-block py-2">View Asset</a>
   <a href="{{ url_for('change_password') }}" class="text-danger d-block py-2">Change Password</a>
   <a href="{{ url_for('logout') }}" class="text-danger d-block py-2">Logout</a>
@@ -55,19 +52,19 @@
     <div class="card mb-4">
       <div class="card-header bg-danger text-white">Asset Details</div>
       <div class="card-body row g-3">
-        <div class="col-md-6">
+        <div class="col-md-3">
           <label>Asset Name</label>
           <input type="text" class="form-control" name="asset_name" value="{{ asset[1] }}">
         </div>
-        <div class="col-md-6">
+        <div class="col-md-3">
           <label>Tag</label>
           <input type="text" class="form-control" name="tag" value="{{ asset[9] }}">
         </div>
-        <div class="col-md-12">
+        <div class="col-md-3">
           <label>Description</label>
           <textarea class="form-control" name="description">{{ asset[2] }}</textarea>
         </div>
-        <div class="col-md-6">
+        <div class="col-md-3">
           <label>Category</label>
           <select name="category_id" id="category_id" class="form-control">
             <option value="">Select Category</option>
@@ -78,7 +75,7 @@
             {% endfor %}
           </select>
         </div>
-        <div class="col-md-6">
+        <div class="col-md-3">
           <label>Subcategory</label>
           <select name="subcategory_id" id="subcategory_id" class="form-control">
             <option value="">Select Subcategory</option>
@@ -89,15 +86,15 @@
             {% endfor %}
           </select>
         </div>
-        <div class="col-md-6">
+        <div class="col-md-3">
           <label>Purchase Date</label>
           <input type="date" class="form-control" name="purchase_date" value="{{ asset[4] }}">
         </div>
-        <div class="col-md-6">
+        <div class="col-md-3">
           <label>Purchase Cost</label>
           <input type="number" step="0.01" class="form-control" name="purchase_cost" value="{{ asset[5] }}">
         </div>
-        <div class="col-md-12">
+        <div class="col-md-3">
           <label>Remarks</label>
           <input type="text" class="form-control" name="remarks" value="{{ asset[10] }}">
         </div>
@@ -105,7 +102,7 @@
     </div>
 
     <!-- Warranty -->
-    <div class="card mb-4">
+    <div class="card mb-3">
       <div class="card-header bg-danger text-white">Warranty</div>
       <div class="card-body">
         <label>Warranty Years</label>
@@ -114,53 +111,57 @@
     </div>
 
     <!-- Insurance -->
-    <div class="card mb-4">
+    <div class="card mb-3">
       <div class="card-header bg-danger text-white">Insurance</div>
       <div class="card-body row g-3">
-        <div class="col-md-6">
+        <div class="col-md-3">
           <label>Policy Number</label>
           <input type="text" class="form-control" name="policy_number" value="{{ insurance[2] if insurance else '' }}">
         </div>
-        <div class="col-md-6">
-          <label>Provider</label>
-          <input type="text" class="form-control" name="provider" value="{{ insurance[3] if insurance else '' }}">
+        <div class="col-md-3">
+          <label>Provider Details</label>
+          <input type="text" class="form-control" name="provider_details" value="{{ insurance[3] if insurance else '' }}">
         </div>
-        <div class="col-md-6">
+        <div class="col-md-3">
           <label>Insured Value</label>
           <input type="text" class="form-control" name="insured_value" value="{{ insurance[4] if insurance else '' }}">
         </div>
-        <div class="col-md-6">
+        <div class="col-md-3">
           <label>Start Date</label>
           <input type="date" class="form-control" name="start_date" value="{{ insurance[5] if insurance else '' }}">
         </div>
-        <div class="col-md-6">
+        <div class="col-md-3">
           <label>End Date</label>
           <input type="date" class="form-control" name="end_date" value="{{ insurance[6] if insurance else '' }}">
         </div>
-        <div class="col-md-6">
+        <div class="col-md-3">
           <label>Provider Contact</label>
           <input type="text" class="form-control" name="provider_contact" value="{{ insurance[8] if insurance else '' }}">
+        </div>
+        <div class="col-md-3">
+          <label>Premium Amount</label>
+          <input type="text" class="form-control" name="insurance_premium" value="{{ insurance[9] if insurance else '' }}">
         </div>
       </div>
     </div>
 
     <!-- Vendors -->
-    <div class="card mb-4">
+    <div class="card mb-3">
       <div class="card-header bg-danger text-white">Vendors</div>
       <div class="card-body row g-3">
-        <div class="col-md-6">
+        <div class="col-md-3">
           <label>Vendor Name</label>
           <input type="text" class="form-control" name="vendor_name" value="{{ vendor[1] if vendor else '' }}">
         </div>
-        <div class="col-md-6">
+        <div class="col-md-3">
           <label>Vendor Email</label>
           <input type="email" name="vendor_email" class="form-control" value="{{ vendor[2] or '' }}">
         </div>
-        <div class="col-md-6">
+        <div class="col-md-3">
           <label>Vendor Phone</label>
           <input type="text" class="form-control" name="vendor_phone" value="{{ vendor[3] if vendor else '' }}">
         </div>
-        <div class="col-md-6">
+        <div class="col-md-3">
           <label>Vendor Address</label>
           <input type="text" class="form-control" name="vendor_address" value="{{ vendor[4] if vendor else '' }}">
         </div>
@@ -168,10 +169,10 @@
     </div>
 
     <!-- Assignments -->
-    <div class="card mb-4">
+    <div class="card mb-3">
       <div class="card-header bg-danger text-white">Assignments</div>
       <div class="card-body row g-3">
-        <div class="col-md-6">
+        <div class="col-md-3">
           <label>Assigned To</label>
           <select name="assigned_user_id" class="form-select">
             <option value="">-- Select User --</option>
@@ -180,11 +181,11 @@
             {% endfor %}
           </select>
         </div>
-        <div class="col-md-6">
+        <div class="col-md-3">
           <label>Assigned From</label>
           <input type="date" class="form-control" name="assigned_from" value="{{ assignment[3] if assignment else '' }}">
         </div>
-        <div class="col-md-6">
+        <div class="col-md-3">
           <label>Assigned Until</label>
           <input type="date" class="form-control" name="assigned_until" value="{{ assignment[4] if assignment else '' }}">
         </div>
@@ -234,6 +235,13 @@
     });
   });
 </script>
+<script>
+  function toggleSidebar() {
+    const sidebar = document.querySelector('.sidebar');
+    sidebar.classList.toggle('active');
+  }
+</script>
+
 
 <!-- AOS Animation Library -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.js"></script>
