@@ -1113,7 +1113,7 @@ def view_asset_by_tag(asset_tag):
     if not asset:
         return "Asset not found", 404
 
-    return render_template("welcome.html", asset=asset)
+    return render_template("view_qr.html", asset=asset)
     
 @app.route('/view_requests')
 @login_required
