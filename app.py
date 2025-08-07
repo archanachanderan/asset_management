@@ -1105,7 +1105,7 @@ def view_asset_by_tag(asset_tag):
     conn = get_db_connection()
     cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
 
-    cur.execute("SELECT * FROM asset WHERE tag = %s", (asset_tag,))
+    cur.execute("SELECT a.*, c.name FROM asset a join category c on a.category_id=c.id WHERE tag = %s", (asset_tag,))
     asset = cur.fetchone()
     cur.close()
     conn.close()
