@@ -87,6 +87,9 @@
   <a href="{{ url_for('view_users') }}" class="text-danger d-block py-2">View Users</a>
   {% endif %}
   <a href="{{ url_for('view_assets') }}" class="text-danger d-block py-2">View Asset</a>
+  {% if session.role == 'Super Admin' %}
+    <a href="{{ url_for('view_messages') }}" class="text-danger d-block py-2">View Messages</a>      
+    {% endif %}
   {% if session.role == 'Asset Manager' %}
     <a href="{{ url_for('view_requests') }}" class="text-danger d-block py-2">View Requests</a>
   {% endif %}

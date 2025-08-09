@@ -51,7 +51,6 @@
   </div>
 </section>
 
-
   <!-- Welcome Text -->
   <div class="text-center py-3 bg-secondary">
     <h2 class="display-4 fw-bold animate__animated animate__fadeIn animate__delay-1s text-white" style="font-family: 'Times New Roman', Times, serif;">WELCOME</h2>
@@ -108,7 +107,7 @@
   <footer class="bg-dark text-white py-4">
     <div class="container">
       <div class="row">
-        <div class="col-md-3 text-start">
+        <div class="col-md-6 text-start">
           <h5 class="fw-bold">Contact</h5>
           <p>Email :
             <a href="mailto:sveprscomp@gmail.com" class="text-white text-decoration-none">sveprscomp@gmail.com</a>
@@ -122,6 +121,34 @@
             </a>
           </p>
         </div>
+        <div class="col-md-3 text-start">
+    <h5 class="fw-bold">Send Us A Message</h5>
+    <form action="/contact" method="POST" class="needs-validation" novalidate>
+      
+        <!-- Name -->
+        <div class="mb-2">
+            <input type="text" name="name" class="form-control" placeholder="Enter your full name" required>
+            <div class="invalid-feedback">Please enter your name.</div>
+        </div>
+
+        <!-- Email -->
+        <div class="mb-2">
+            <input type="email" name="email" class="form-control" placeholder="Enter your email address" required>
+            <div class="invalid-feedback">Please enter a valid email address.</div>
+        </div>
+        
+        <!-- Message -->
+        <div class="mb-2">
+            <textarea name="message" rows="4" class="form-control" placeholder="Write your message here..." required></textarea>
+            <div class="invalid-feedback">Please enter your message.</div>
+        </div>
+        
+        <!-- Submit -->
+        <button type="submit" class="btn btn-danger px-4 fw-semibold">Send Message</button>
+    </form>
+</div>
+
+
       </div>
       <hr class="border-light">
       <p class="mb-0 text-center">© 2025 Sree Venkateshwara Enterprises | All Rights Reserved</p>
@@ -174,5 +201,26 @@
       duration: 1200 // animation duration in ms
     });
   </script>
+  <script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const msg = urlParams.get("msg");
+
+        if (msg) {
+            const toastContainer = document.getElementById("toast-container");
+            const toastMessage = document.getElementById("toast-message");
+
+            toastMessage.textContent = msg;
+            toastContainer.style.display = "block";
+            toastContainer.style.opacity = "1";
+
+            // Auto-hide after 3 seconds with fade-out
+            setTimeout(() => {
+                toastContainer.style.opacity = "0";
+                setTimeout(() => toastContainer.style.display = "none", 500);
+            }, 3000);
+        }
+    });
+</script>
 </body>
 </html>

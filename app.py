@@ -277,6 +277,40 @@ def load_user(user_id):
         return User(id=row[0], email=row[1], password_hash=row[2], force_password_reset=row[3], role=row[4])
     return None
 
+@app.route("/contact", methods=["POST"])
+def contact():
+    # If user is logged in, skip saving to outsiders' table
+    if current_user.is_authenticated:
+        return redirect(url_for("welcome", msg="You are already registered. Please use your account to contact us."))
+
+    conn = get_db_connection()
+    name = request.form['name']
+    email = request.form['email']
+    message = request.form['message']
+
+    cur = conn.cursor()
+    cur.execute("""
+        INSERT INTO contact_messages (name, email, message)
+        VALUES (%s, %s, %s)
+    """, (name, email, message))
+    conn.commit()
+    cur.close()
+    return redirect(url_for("welcome", msg="Your message has been sent successfully!"))
+
+@app.route("/admin/messages")
+@login_required
+def view_messages():
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT id, name AS sender_name, email AS sender_email, message, submitted_at
+        FROM contact_messages
+        ORDER BY submitted_at DESC
+    """)
+    messages = cur.fetchall()
+    cur.close()
+    return render_template("messages.html", messages=messages)
+
 # --- Admin Dashboard ---
 @app.route('/admin/dashboard')
 @login_required
