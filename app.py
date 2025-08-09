@@ -74,16 +74,16 @@ def welcome():
     return render_template('welcome.html')
 
 # --- Dummy function to fetch user from DB ---
-def get_user_by_email_role(email, role_name):
+def get_user_by_email(email):
     conn = get_db_connection()
     cur = conn.cursor()
     cur.execute("""
         SELECT u.id, u.email, u.password_hash, u.force_password_reset, array_agg(r.name)
         FROM user_details u
         JOIN role r ON r.id = u.role_id
-        WHERE u.email = %s AND r.name = %s AND u.is_active = TRUE
+        WHERE u.email = %s AND u.is_active = TRUE
         GROUP BY u.id
-    """, (email, role_name))
+    """, (email,))
     row = cur.fetchone()
     cur.close()
     conn.close()
@@ -183,7 +183,6 @@ def login():
     if request.method == 'POST':
         email = request.form.get('email')
         password = request.form.get('password')
-        role = request.form.get('role')
         captcha_input = request.form.get('captcha')
 
         # CAPTCHA validation
@@ -192,12 +191,12 @@ def login():
             return redirect(url_for('login', animate='true'))
 
         # Fetch user
-        user = get_user_by_email_role(email, role)
+        user = get_user_by_email(email)
 
         if user and check_password_hash(user.password , password):
             login_user(user)
-            session['role'] = role
-            session['email'] = email   
+            session['email'] = email 
+            session['role'] = user.roles[0] if user.roles else None  
 
             # Update last_login
             try:

@@ -7,6 +7,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
   <style>
     .product-bg {
       position: absolute;
@@ -81,21 +82,13 @@
           </div>
 
           <div class="mb-3">
-            <label for="role" class="form-label">Select Role</label>
-            <select class="form-select" id="role" name="role" required>
-              <option value="">-- Select Role --</option>
-              <option value="Super Admin">Admin</option>
-              <option value="Asset Manager">Asset Manager</option>
-              <option value="Technician">Technician</option>
-              <option value="Asset Entry Officer">Asset Entry Officer</option>
-            </select>
-          </div>
+            <label for="captcha" class="form-label">Enter CAPTCHA</label>
+            <input type="text" class="form-control mb-2" id="captcha" name="captcha" required>
 
-          <div class="mb-3">
-            <label for="captcha" class="form-label">Enter CAPTCHA</label><br>
-            <input type="text" class="form-control" id="captcha" name="captcha" required>
-            <p></p>
-            <img src="{{ url_for('captcha') }}" alt="CAPTCHA" class="mb-2" onclick="this.src='{{ url_for('captcha') }}?'+Math.random();" style="cursor:pointer;"><br>
+            <div class="d-flex align-items-center">
+            <img id="captchaImage" src="{{ url_for('captcha') }}" alt="CAPTCHA" class="me-2" style="height: 60px;">
+            <i class="bi bi-arrow-clockwise fs-4" style="cursor: pointer;" onclick="reloadCaptcha()" title="Reload CAPTCHA"></i>
+            </div>
           </div>
 
           <button type="submit" class="btn btn-danger w-100">Login</button>
@@ -112,5 +105,10 @@
   <script>
     AOS.init();
   </script>
+  <script>
+  function reloadCaptcha() {
+    document.getElementById("captchaImage").src = "{{ url_for('captcha') }}?" + Math.random();
+  }
+</script>
 </body>
 </html>
