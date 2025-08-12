@@ -1133,6 +1133,32 @@ def download_qr(asset_tag):
         download_name=f"{asset_tag}_qr.png"
     )
 
+@app.route('/asset/qr_img/<string:asset_tag>')
+def qr_img(asset_tag):
+    import qrcode
+    import io
+    from flask import send_file
+
+    qr_data = f"https://asset-management-u3dy.onrender.com/asset/qr/{asset_tag}"
+
+    qr = qrcode.QRCode(
+        version=1,
+        error_correction=qrcode.constants.ERROR_CORRECT_M,
+        box_size=8,
+        border=4
+    )
+    qr.add_data(qr_data)
+    qr.make(fit=True)
+
+    img = qr.make_image(fill_color="black", back_color="white")
+
+    buf = io.BytesIO()
+    img.save(buf, format='PNG')
+    buf.seek(0)
+
+    # Serve image inline (no download)
+    return send_file(buf, mimetype='image/png')
+
 @app.route('/asset/qr/<string:asset_tag>')
 def view_asset_by_tag(asset_tag):
     conn = get_db_connection()

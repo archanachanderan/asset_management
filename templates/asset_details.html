@@ -112,6 +112,14 @@
             <tr><th>Purchase Cost</th><td>{{ asset[4]  or 'N/A'}}</td></tr>
             <tr><th>Remarks</th><td>{{ asset[5]  or 'N/A'}}</td></tr>
             <tr><th>Is Active</th><td>{{ asset[6]  or 'N/A'}}</td></tr>
+            <tr>
+  <th>QR Code</th>
+  <td>
+    <a href="{{ url_for('download_qr', asset_tag=asset[7]) }}" title="Click to download QR code">
+  <img src="{{ url_for('qr_img', asset_tag=asset[7]) }}" alt="QR Code" width="120" height="120" style="cursor:pointer;">
+</a>
+  </td>
+</tr>
         </table>
     </div>
 

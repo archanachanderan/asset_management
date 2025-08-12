@@ -110,6 +110,7 @@
             <th>Category</th>
             <th>Is Active</th>
             <th>Purchase Date</th>
+            <th>QR Code</th>
           </tr>
         </thead>
         <tbody>
@@ -120,6 +121,7 @@
             <td>{{ asset[3] }}</td>
             <td>{{ asset[4] }}</td>
             <td>{{ asset[5] }}</td>
+            <td><a href="{{ url_for('download_qr', asset_tag=asset[1]) }}" title="Click to download QR code"><img src="{{ url_for('qr_img', asset_tag=asset[1]) }}" alt="QR Code" width="60" height="60" style="cursor:pointer;"></a></td>
           </tr>
           {% endfor %}
         </tbody>
