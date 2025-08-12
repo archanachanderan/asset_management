@@ -76,8 +76,10 @@
       </div>
     </div>
 
-    <!-- Google Map -->
-    <div class="mt-5" data-aos="zoom-in-up" data-aos-delay="3500">
+    <div class="container mt-5">
+  <div class="row g-4" data-aos="zoom-in-up" data-aos-delay="3500">
+    <!-- Google Map Column -->
+    <div class="col-md-6">
       <div class="ratio ratio-16x9 shadow rounded">
         <iframe
           src="https://maps.google.com/maps?q=13.04498,77.73890&z=15&output=embed"
@@ -85,44 +87,38 @@
         </iframe>
       </div>
     </div>
-  </div>
-  <hr class="border-dark">
-  <div class="container">
-      <div class="row">
-<div class="container-fluid my-4">
-  <div class="card shadow p-4 border-0">
-    <h5 class="fw-bold mb-3">Send Us A Message</h5>
-    <form action="/contact" method="POST" class="needs-validation" novalidate>
-      
-      <!-- Name + Email row -->
-      <div class="row mb-3">
-        <div class="col-md-6 mb-3 mb-md-0">
-          <input type="text" name="name" class="form-control" placeholder="Enter your full name" required>
-          <div class="invalid-feedback">Please enter your name.</div>
-        </div>
-        <div class="col-md-6">
-          <input type="email" name="email" class="form-control" placeholder="Enter your email address" required>
-          <div class="invalid-feedback">Please enter a valid email address.</div>
-        </div>
-      </div>
 
-      <!-- Message -->
-      <div class="mb-3">
-        <textarea name="message" rows="2" class="form-control" placeholder="Write your message here..." required></textarea>
-        <div class="invalid-feedback">Please enter your message.</div>
+    <!-- Contact Form Column -->
+    <div class="col-md-6">
+      <div class="card shadow p-4 border-0">
+        <h5 class="fw-bold mb-3">Send Us A Message</h5>
+        <form action="/contact" method="POST" class="needs-validation" novalidate>
+          <!-- Name + Email row -->
+          <div class="row mb-3">
+            <div class="col-md-6 mb-3 mb-md-0">
+              <input type="text" name="name" class="form-control" placeholder="Enter your full name" required>
+              <div class="invalid-feedback">Please enter your name.</div>
+            </div>
+            <div class="col-md-6">
+              <input type="email" name="email" class="form-control" placeholder="Enter your email address" required>
+              <div class="invalid-feedback">Please enter a valid email address.</div>
+            </div>
+          </div>
+
+          <!-- Message -->
+          <div class="mb-3">
+            <textarea name="message" rows="4" class="form-control" placeholder="Write your message here..." required></textarea>
+            <div class="invalid-feedback">Please enter your message.</div>
+          </div>
+
+          <!-- Submit -->
+          <button type="submit" class="btn btn-danger px-4 fw-semibold">Send Message</button>
+        </form>
       </div>
-      
-      <!-- Submit -->
-      <button type="submit" class="btn btn-danger px-4 fw-semibold">Send Message</button>
-    </form>
+    </div>
   </div>
 </div>
-
-
-</div>
-
-
-      </div>
+     </div>
     </div>
 
   <!-- Scripts -->
