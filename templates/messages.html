@@ -34,10 +34,18 @@
 
   <!-- Sidebar -->
 <div class="sidebar" >
+    {% if session.role == 'Super Admin' %}
   <h4 class="text-center fw-bold display-5 text-danger d-block py-2" >Admin</h4>
+  {% endif %}
+  {% if session.role == 'Asset Manager' %}
+  <h4 class="text-center fw-bold display-5 text-danger d-block py-2" >Manager</h4>
+  {% endif %}
   <a href="{{ url_for('admin_dashboard') }}" class="text-danger d-block py-2">Dashboard</a>
   <a href="{{ url_for('view_users') }}" class="text-danger d-block py-2">View Users</a>
   <a href="{{ url_for('view_assets') }}" class="text-danger d-block py-2">View Asset</a>
+  {% if session.role == 'Asset Manager' %}
+    <a href="{{ url_for('view_requests') }}" class="text-danger d-block py-2">View Requests</a>
+  {% endif %}
   <a href="{{ url_for('view_messages') }}" class="text-danger d-block py-2">View Messages</a>
   <a href="{{ url_for('change_password') }}" class="text-danger d-block py-2">Change Password</a>
   <a href="{{ url_for('logout') }}" class="text-danger d-block py-2">Logout</a>

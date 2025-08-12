@@ -92,6 +92,7 @@
     {% endif %}
   {% if session.role == 'Asset Manager' %}
     <a href="{{ url_for('view_requests') }}" class="text-danger d-block py-2">View Requests</a>
+    <a href="{{ url_for('view_messages') }}" class="text-danger d-block py-2">View Messages</a>
   {% endif %}
   <a href="{{ url_for('change_password') }}" class="text-danger d-block py-2">Change Password</a>
   <a href="{{ url_for('logout') }}" class="text-danger d-block py-2">Logout</a>

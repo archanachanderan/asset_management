@@ -48,6 +48,7 @@
       <a href="{{ url_for('manager_dashboard') }}" class="text-danger d-block py-2">Dashboard</a>
       <a href="{{ url_for('view_users') }}" class="text-danger d-block py-2">View Users</a>
       <a href="{{ url_for('view_requests') }}" class="text-danger d-block py-2">View Requests</a>
+      <a href="{{ url_for('view_messages') }}" class="text-danger d-block py-2">View Messages</a>
     {% endif %}
     {% if session.role == 'Asset Entry Officer' %}
       <h4 class="text-align fw-bold fs-1 text-danger d-block py-2">Asset Entry Officer</h4>
