@@ -1105,10 +1105,6 @@ def download_asset_pdf(asset_id):
 @app.route('/asset/<string:asset_tag>/download_qr')
 @login_required
 def download_qr(asset_tag):
-    import qrcode
-    import io
-    from flask import send_file
-
     qr_data = f"https://asset-management-u3dy.onrender.com/asset/qr/{asset_tag}"
 
     qr = qrcode.QRCode(
@@ -1135,10 +1131,6 @@ def download_qr(asset_tag):
 
 @app.route('/asset/qr_img/<string:asset_tag>')
 def qr_img(asset_tag):
-    import qrcode
-    import io
-    from flask import send_file
-
     qr_data = f"https://asset-management-u3dy.onrender.com/asset/qr/{asset_tag}"
 
     qr = qrcode.QRCode(
