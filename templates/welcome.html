@@ -50,8 +50,8 @@
           SREE VENKATESHWARA ENTERPRISES
         </p>
         <div class="d-flex align-items-center">
-          <a class="btn btn-white me-2 fs-5 fw-bold py-2 px-4 text-primary" href="{{ url_for('product') }}">Product</a>
           <a class="btn btn-white me-2 fs-5 fw-bold py-2 px-4 text-primary" href="{{ url_for('about_us') }}">About SVE</a>
+          <a class="btn btn-white me-2 fs-5 fw-bold py-2 px-4 text-primary" href="{{ url_for('product') }}">Product</a>
           <a class="btn btn-white me-2 fs-5 fw-bold py-2 px-4 text-primary" href="{{ url_for('contact_us') }}">Contact</a>
           <a class="btn btn-white me-2 fs-5 fw-bold py-2 px-4 text-primary" href="{{ url_for('login') }}?animate=true">Inventory</a>
         </div>
@@ -68,6 +68,12 @@
       Manufacturing of Oil Filter Caps & Press Components
     </p>
   </div>
+  <!-- Prev/Next buttons -->
+  <button class="hero-prev">&#10094;</button>
+  <button class="hero-next">&#10095;</button>
+
+  <!-- Dots -->
+  <div class="hero-dots"></div>
 </section>
 
   <!-- Welcome Text -->
@@ -82,6 +88,18 @@
     -->
 
     <div class="d-flex justify-content-center gap-5 flex-wrap py-5">
+      <!-- About -->
+      <div class="col-12 col-md-3">
+        <a href="{{ url_for('about_us') }}" class="text-decoration-none">
+          <div class="card shadow-sm border-0 rounded-4 h-100 text-center p-4 transition-card">
+            <img src="{{ url_for('static', filename='images/fact.jpg') }}" alt="about" class="img-fluid mb-3" style="height: 150px; object-fit: cover; border-radius: 12px;">
+            <h4 class="fw-bold text-danger mb-2">About SVE</h4>
+            <p class="text-muted mb-0">Learn more about</p>
+            <p class="text-muted mb-0">Sree Venkateshwara Enterprises</p>
+          </div>
+        </a>
+      </div>
+
       <!-- Products -->
       <div class="col-12 col-md-3">
         <a href="{{ url_for('product') }}" class="text-decoration-none">
@@ -91,18 +109,6 @@
             <p class="text-muted mb-0 ">
               Get an overview of our product range at a glance.
             </p>
-          </div>
-        </a>
-      </div>
-
-      <!-- About -->
-      <div class="col-12 col-md-3">
-        <a href="{{ url_for('about_us') }}" class="text-decoration-none">
-          <div class="card shadow-sm border-0 rounded-4 h-100 text-center p-4 transition-card">
-            <img src="{{ url_for('static', filename='images/fact.jpg') }}" alt="about" class="img-fluid mb-3" style="height: 150px; object-fit: cover; border-radius: 12px;">
-            <h4 class="fw-bold text-danger mb-2">About SVE</h4>
-            <p class="text-muted mb-0">Learn more about</p>
-            <p class="text-muted mb-0">Sree Venkateshwara Enterprises</p>
           </div>
         </a>
       </div>
@@ -174,27 +180,87 @@
     </div>
   </footer>
 
-  <!-- Scripts -->
-   <script>
-  document.addEventListener("DOMContentLoaded", function () {
-    const hero = document.querySelector(".hero-section");
-    const images = [
-      "/static/images/factory.jpg",
-      "/static/images/fact.jpg",
-      "/static/images/product-sample.jpg"
-    ];
-    let index = 0;
+  <script>
+document.addEventListener("DOMContentLoaded", function () {
+  const hero = document.querySelector(".hero-section");
+  const slidesContainer = document.createElement("div");
+  slidesContainer.classList.add("hero-slides");
+  hero.insertBefore(slidesContainer, hero.querySelector(".hero-text")); // insert behind text
 
-    function changeBackground() {
-      hero.style.backgroundImage = `url('${images[index]}')`;
-      index = (index + 1) % images.length;
-    }
+  const prevBtn = document.querySelector(".hero-prev");
+  const nextBtn = document.querySelector(".hero-next");
+  const dotsContainer = document.querySelector(".hero-dots");
 
-    changeBackground(); // initial load
-    setInterval(changeBackground, 3000); 
+  const images = [
+    "{{ url_for('static', filename='images/factory.jpg') }}",
+    "{{ url_for('static', filename='images/fact.jpg') }}",
+    "{{ url_for('static', filename='images/product-sample.jpg') }}"
+  ];
+
+  let index = 0;
+  let slideInterval;
+
+  // Create slides
+  images.forEach(src => {
+    const img = document.createElement("img");
+    img.src = src;
+    img.style.width = "100%";
+    img.style.position = "absolute";
+    img.style.top = "0";
+    img.style.left = "0";
+    img.style.transition = "transform 0.6s ease-in-out";
+    slidesContainer.appendChild(img);
   });
-</script>
 
+  const slides = slidesContainer.querySelectorAll("img");
+
+  // Create dots dynamically
+  images.forEach((_, i) => {
+    const dot = document.createElement("span");
+    dot.addEventListener("click", () => goToSlide(i));
+    dotsContainer.appendChild(dot);
+  });
+  const dots = dotsContainer.querySelectorAll("span");
+
+  function showSlide(i) {
+    index = (i + images.length) % images.length;
+    slides.forEach((slide, idx) => {
+      slide.style.transform = `translateX(${100 * (idx - index)}%)`;
+    });
+    dots.forEach(dot => dot.classList.remove("active"));
+    dots[index].classList.add("active");
+  }
+
+  function nextSlide() {
+    showSlide(index + 1);
+  }
+
+  function prevSlide() {
+    showSlide(index - 1);
+  }
+
+  function goToSlide(i) {
+    showSlide(i);
+    resetInterval();
+  }
+
+  function startAutoSlide() {
+    slideInterval = setInterval(nextSlide, 3000);
+  }
+
+  function resetInterval() {
+    clearInterval(slideInterval);
+    startAutoSlide();
+  }
+
+  prevBtn.addEventListener("click", () => { prevSlide(); resetInterval(); });
+  nextBtn.addEventListener("click", () => { nextSlide(); resetInterval(); });
+
+  // Init
+  showSlide(index);
+  startAutoSlide();
+});
+</script>
   <script>
     function resizeIframe(iframe) {
       try {

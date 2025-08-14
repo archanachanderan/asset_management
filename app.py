@@ -16,6 +16,7 @@ from captcha.image import ImageCaptcha
 from fpdf import FPDF
 from itsdangerous import URLSafeTimedSerializer
 import pytz
+import re
 
 # --- Load env vars (make sure .env is set in Render dashboard too) ---
 load_dotenv()
@@ -100,6 +101,23 @@ def captcha():
     data = image.generate(captcha_text)
     return send_file(data, mimetype='image/png')
 
+def is_strong_password(password):
+    """
+    Checks password strength:
+    - At least 8 characters
+    - At least 1 uppercase letter
+    - At least 1 lowercase letter
+    - At least 1 digit
+    - At least 1 special character
+    """
+    if (len(password) >= 8 and
+        re.search(r'[A-Z]', password) and
+        re.search(r'[a-z]', password) and
+        re.search(r'[0-9]', password) and
+        re.search(r'[!@#$%^&*(),.?":{}|<>]', password)):
+        return True
+    return False
+
 # --- Forgot password ---
 @app.route('/forgot-password', methods=['GET', 'POST'])
 def forgot_password():
@@ -119,6 +137,7 @@ def forgot_password():
             return render_template('login.html')
         else:
             flash('Email not found.', 'danger')
+            return render_template('login.html')
         cur.close()
         conn.close()
     return render_template('forgot_password.html')
@@ -134,6 +153,10 @@ def change_password():
 
         if new != confirm:
             flash('New password and confirm password do not match.', 'danger')
+            return render_template('change_password.html')
+        
+        if not is_strong_password(new):
+            flash('Password must be at least 8 characters long and include uppercase, lowercase, number, and special character.', 'danger')
             return render_template('change_password.html')
         
         conn = get_db_connection()
@@ -211,7 +234,7 @@ def login():
                 print(f"[ERROR] Failed to update last_login: {e}")
 
             # Redirect to force password reset if required
-            if user.force_password_reset and (user.has_role('Technician') or user.has_role('Asset Entry Officer')):
+            if user.force_password_reset:
                 return redirect(url_for('reset_password'))
 
             # Normal role-based redirection
@@ -243,6 +266,11 @@ def reset_password():
         if new_password != confirm_password:
             flash('Passwords do not match.', 'danger')
             return render_template('reset_password.html')
+        
+        if not is_strong_password(new_password):
+            flash('Password must be at least 8 characters long and include uppercase, lowercase, number, and special character.', 'danger')
+            return render_template('reset_password.html')
+
         new_hashed = generate_password_hash(new_password)
         conn = get_db_connection()
         cur = conn.cursor()
@@ -321,71 +349,17 @@ def admin_dashboard():
     if 'email' not in session:
         session['email'] = current_user.email
 
-    conn = get_db_connection()
-    cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
-
-    save_all_notifications()
-
-     # Example counts
-    cur.execute("SELECT COUNT(*) FROM warranty w JOIN asset a ON a.id = w.asset_id WHERE w.is_active = TRUE AND a.is_active = TRUE AND (a.purchase_date + (w.years || ' years')::interval) <= CURRENT_DATE + INTERVAL '30 days'")
-    warranty_expiring_count = cur.fetchone()[0]
-
-    cur.execute("SELECT COUNT(*) FROM insurances i JOIN asset a ON a.id = i.asset_id WHERE i.is_active = TRUE AND a.is_active = TRUE AND i.end_date <= CURRENT_DATE + INTERVAL '30 days'")
-    insurance_expiring_count = cur.fetchone()[0]
-
-    cur.execute("SELECT COUNT(*) FROM requests WHERE status = 'Pending' AND is_active = TRUE")
-    pending_requests_count = cur.fetchone()[0]
-
-    total_count = warranty_expiring_count + insurance_expiring_count + pending_requests_count
-
-    
-    # Existing pending requests
-    cur.execute("""
-        SELECT r.id, r.request_type, u.name AS request_by
-        FROM requests r
-        JOIN user_details u ON r.requested_by = u.id
-        WHERE r.status = 'Pending' AND r.is_active = TRUE
-    """)
-    pending_requests = cur.fetchall()
-    pending_count = len(pending_requests)
-
-    # Warranty expiry in next 30 days
-    cur.execute("""
-        SELECT 
-        a.id AS asset_id,
-        a.asset_name,
-        a.purchase_date,
-        w.years AS warranty_years,
-        (a.purchase_date + (w.years || ' years')::interval) AS expiry_date
-    FROM asset a
-    JOIN warranty w ON a.id = w.asset_id
-    WHERE w.is_active = TRUE
-    AND (a.purchase_date + (w.years || ' years')::interval) <= CURRENT_DATE + INTERVAL '30 days'
-    AND (a.purchase_date + (w.years || ' years')::interval) >= CURRENT_DATE
-    """)
-    expiring_warranties = cur.fetchall()
-
-    # Insurance expiry in next 30 days
-    cur.execute("""
-        SELECT a.asset_name, i.end_date
-    FROM asset a
-    JOIN insurances i ON a.id = i.asset_id
-    WHERE i.is_active = TRUE
-      AND i.end_date <= CURRENT_DATE + INTERVAL '30 days'
-      AND i.end_date >= CURRENT_DATE
-    """)
-    expiring_insurances = cur.fetchall()
-
-    conn.close()
-    cur.close()
-    conn.close()
+    notifications = get_notifications()
 
     return render_template(
         'admin_dashboard.html',
         total_assets=0,
-        pending_requests=pending_requests, pending_count=pending_count, expiring_warranties=expiring_warranties, expiring_insurances=expiring_insurances,
+        pending_requests=notifications["pending_requests"],
+        pending_count=len(notifications["pending_requests"]),
+        expiring_warranties=notifications["expiring_warranties"],
+        expiring_insurances=notifications["expiring_insurances"],
         total_users=0,
-        total_count=total_count,
+        total_count=notifications["total_count"],
         open_maintenance=0,
         pending_approvals=0,
         recent_logs=[],
@@ -401,70 +375,17 @@ def manager_dashboard():
     if 'email' not in session:
         session['email'] = current_user.email
 
-    conn = get_db_connection()
-    cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+    notifications = get_notifications()
 
-    save_all_notifications()
-
-     # Example counts
-    cur.execute("SELECT COUNT(*) FROM warranty w JOIN asset a ON a.id = w.asset_id WHERE w.is_active = TRUE AND a.is_active = TRUE AND (a.purchase_date + (w.years || ' years')::interval) <= CURRENT_DATE + INTERVAL '30 days'")
-    warranty_expiring_count = cur.fetchone()[0]
-
-    cur.execute("SELECT COUNT(*) FROM insurances i JOIN asset a ON a.id = i.asset_id WHERE i.is_active = TRUE AND a.is_active = TRUE AND i.end_date <= CURRENT_DATE + INTERVAL '30 days'")
-    insurance_expiring_count = cur.fetchone()[0]
-
-    cur.execute("SELECT COUNT(*) FROM requests WHERE status = 'Pending' AND is_active = TRUE")
-    pending_requests_count = cur.fetchone()[0]
-
-    total_count = warranty_expiring_count + insurance_expiring_count + pending_requests_count
-
-    
-    # Existing pending requests
-    cur.execute("""
-        SELECT r.id, r.request_type, u.name AS request_by
-        FROM requests r
-        JOIN user_details u ON r.requested_by = u.id
-        WHERE r.status = 'Pending' AND r.is_active = TRUE
-    """)
-    pending_requests = cur.fetchall()
-    pending_count = len(pending_requests)
-
-    # Warranty expiry in next 30 days
-    cur.execute("""
-        SELECT 
-        a.id AS asset_id,
-        a.asset_name,
-        a.purchase_date,
-        w.years AS warranty_years,
-        (a.purchase_date + (w.years || ' years')::interval) AS expiry_date
-    FROM asset a
-    JOIN warranty w ON a.id = w.asset_id
-    WHERE w.is_active = TRUE
-    AND (a.purchase_date + (w.years || ' years')::interval) <= CURRENT_DATE + INTERVAL '30 days'
-    AND (a.purchase_date + (w.years || ' years')::interval) >= CURRENT_DATE
-    """)
-    expiring_warranties = cur.fetchall()
-
-    # Insurance expiry in next 30 days
-    cur.execute("""
-        SELECT a.asset_name, i.end_date
-    FROM asset a
-    JOIN insurances i ON a.id = i.asset_id
-    WHERE i.is_active = TRUE
-      AND i.end_date <= CURRENT_DATE + INTERVAL '30 days'
-      AND i.end_date >= CURRENT_DATE
-    """)
-    expiring_insurances = cur.fetchall()
-
-    conn.close()
-    cur.close()
-    conn.close()
     return render_template(
         'manager_dashboard.html',
         total_assets=0,
-        pending_requests=pending_requests, pending_count=pending_count, expiring_warranties=expiring_warranties, expiring_insurances=expiring_insurances,
+        pending_requests=notifications["pending_requests"],
+        pending_count=len(notifications["pending_requests"]),
+        expiring_warranties=notifications["expiring_warranties"],
+        expiring_insurances=notifications["expiring_insurances"],
         total_users=0,
-        total_count=total_count,
+        total_count=notifications["total_count"],
         open_maintenance=0,
         pending_approvals=0,
         recent_logs=[],
@@ -480,73 +401,17 @@ def assetentryofficer_dashboard():
     if 'email' not in session:
         session['email'] = current_user.email
 
-    conn = get_db_connection()
-    cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+    notifications = get_notifications()
 
-    save_all_notifications()
-
-     # Example counts
-    cur.execute("SELECT COUNT(*) FROM warranty w JOIN asset a ON a.id = w.asset_id WHERE w.is_active = TRUE AND a.is_active = TRUE AND (a.purchase_date + (w.years || ' years')::interval) <= CURRENT_DATE + INTERVAL '30 days'")
-    warranty_expiring_count = cur.fetchone()[0]
-
-    cur.execute("SELECT COUNT(*) FROM insurances i JOIN asset a ON a.id = i.asset_id WHERE i.is_active = TRUE AND a.is_active = TRUE AND i.end_date <= CURRENT_DATE + INTERVAL '30 days'")
-    insurance_expiring_count = cur.fetchone()[0]
-
-    cur.execute("SELECT COUNT(*) FROM requests WHERE status = 'Pending' AND is_active = TRUE")
-    pending_requests_count = cur.fetchone()[0]
-
-    total_count = warranty_expiring_count + insurance_expiring_count + pending_requests_count
-
-    
-    # Existing pending requests
-    cur.execute("""
-        SELECT r.id, r.request_type, u.name AS request_by
-        FROM requests r
-        JOIN user_details u ON r.requested_by = u.id
-        WHERE r.status = 'Pending' AND r.is_active = TRUE
-    """)
-    pending_requests = cur.fetchall()
-    pending_count = len(pending_requests)
-
-    # Warranty expiry in next 30 days
-    cur.execute("""
-        SELECT 
-        a.id AS asset_id,
-        a.asset_name,
-        a.purchase_date,
-        w.years AS warranty_years,
-        (a.purchase_date + (w.years || ' years')::interval) AS expiry_date
-    FROM asset a
-    JOIN warranty w ON a.id = w.asset_id
-    WHERE w.is_active = TRUE
-    AND (a.purchase_date + (w.years || ' years')::interval) <= CURRENT_DATE + INTERVAL '30 days'
-    AND (a.purchase_date + (w.years || ' years')::interval) >= CURRENT_DATE
-    """)
-    expiring_warranties = cur.fetchall()
-
-    # Insurance expiry in next 30 days
-    cur.execute("""
-        SELECT a.asset_name, i.end_date
-    FROM asset a
-    JOIN insurances i ON a.id = i.asset_id
-    WHERE i.is_active = TRUE
-      AND i.end_date <= CURRENT_DATE + INTERVAL '30 days'
-      AND i.end_date >= CURRENT_DATE
-    """)
-    expiring_insurances = cur.fetchall()
-
-    conn.close()
-    cur.close()
-    conn.close()
-
-
-    # Replace below with actual ORM/db fetch or dummy values for now
     return render_template(
         'assetentryofficer_dashboard.html',
         total_assets=0,
-        pending_requests=pending_requests, pending_count=pending_count, expiring_warranties=expiring_warranties, expiring_insurances=expiring_insurances,
+        pending_requests=notifications["pending_requests"],
+        pending_count=len(notifications["pending_requests"]),
+        expiring_warranties=notifications["expiring_warranties"],
+        expiring_insurances=notifications["expiring_insurances"],
         total_users=0,
-        total_count=total_count,
+        total_count=notifications["total_count"],
         open_maintenance=0,
         pending_approvals=0,
         recent_logs=[],
@@ -573,11 +438,62 @@ def technician_dashboard():
         recent_users=[]
     )
 
+def get_notifications():
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+
+    # Warranty expiring in next 30 days
+    cur.execute("""
+        SELECT a.id AS asset_id, a.asset_name, a.purchase_date, 
+               w.years AS warranty_years,
+               (a.purchase_date + (w.years || ' years')::interval) AS expiry_date
+        FROM asset a
+        JOIN warranty w ON a.id = w.asset_id
+        WHERE w.is_active = TRUE
+          AND a.is_active = TRUE
+          AND (a.purchase_date + (w.years || ' years')::interval) <= CURRENT_DATE + INTERVAL '30 days'
+          AND (a.purchase_date + (w.years || ' years')::interval) >= CURRENT_DATE
+    """)
+    expiring_warranties = cur.fetchall()
+
+    # Insurance expiring in next 30 days
+    cur.execute("""
+        SELECT a.id AS asset_id, a.asset_name, i.end_date
+        FROM asset a
+        JOIN insurances i ON a.id = i.asset_id
+        WHERE i.is_active = TRUE
+          AND a.is_active = TRUE
+          AND i.end_date <= CURRENT_DATE + INTERVAL '30 days'
+          AND i.end_date >= CURRENT_DATE
+    """)
+    expiring_insurances = cur.fetchall()
+
+    # Pending requests
+    cur.execute("""
+        SELECT r.id, r.request_type, u.name AS request_by
+        FROM requests r
+        JOIN user_details u ON r.requested_by = u.id
+        WHERE r.status = 'Pending' AND r.is_active = TRUE
+    """)
+    pending_requests = cur.fetchall()
+
+    conn.close()
+    cur.close()
+
+    return {
+        "expiring_warranties": expiring_warranties,
+        "expiring_insurances": expiring_insurances,
+        "pending_requests": pending_requests,
+        "total_count": len(expiring_warranties) + len(expiring_insurances) + len(pending_requests)
+    }
+
 @app.route('/notifications')
 @login_required  # if you want to restrict to logged-in users
 def view_notifications():
     conn = get_db_connection()
     cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+
+    save_all_notifications()
 
     cur.execute("""
         SELECT *
@@ -590,7 +506,6 @@ def view_notifications():
     conn.close()
 
     return render_template('notification.html', notifications=notifications)
-
 
 def save_all_notifications():
     conn = get_db_connection()
@@ -648,6 +563,20 @@ def save_all_notifications():
     cur.close()
     conn.close()
 
+def get_all_notifications():
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    cur.execute("""
+        SELECT id, user_id, message, type, related_id, created_at
+        FROM notification
+        ORDER BY created_at DESC
+    """)
+    notifications = cur.fetchall()
+
+    cur.close()
+    conn.close()
+    return notifications
 # ------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 @app.route('/admin/view_users')
@@ -691,7 +620,14 @@ def user_detail(user_id):
             u.last_login,
             r.name,
             u.created_at,
-            u.is_active
+            u.is_active,
+            u.phone,
+            u.address,
+            u.date_of_birth,
+            u.gender,
+            u.date_of_joining,
+            u.id_proof_type,
+            u.id_proof_number
         FROM user_details u
         JOIN role r ON u.role_id = r.id
         WHERE u.id = %s;
@@ -721,6 +657,7 @@ def add_user():
         name = request.form.get('name')
         email = request.form['email']
         role_id = request.form['role_id']
+
         new_role = request.form.get('new_role') 
         is_active = request.form.get('is_active') == 'on'
 
