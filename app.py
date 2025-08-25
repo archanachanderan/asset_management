@@ -5,7 +5,7 @@ import string
 import psycopg2
 import psycopg2.extras
 from datetime import datetime
-from flask import (Flask, render_template, request, redirect, url_for, session, flash,send_file, send_from_directory, abort)
+from flask import (Flask, render_template, request, redirect, url_for, session, flash,send_file, send_from_directory, abort, jsonify)
 from flask_login import (LoginManager, login_user, logout_user, login_required, current_user, UserMixin)
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
@@ -15,8 +15,13 @@ import qrcode
 from captcha.image import ImageCaptcha
 from fpdf import FPDF
 from itsdangerous import URLSafeTimedSerializer
+from datetime import datetime
+from dateutil.relativedelta import relativedelta 
+from datetime import timedelta
 import pytz
 import re
+import json, os
+import json
 
 # --- Load env vars (make sure .env is set in Render dashboard too) ---
 load_dotenv()
@@ -138,14 +143,17 @@ def forgot_password():
         else:
             flash('Email not found.', 'danger')
             return render_template('login.html')
-        cur.close()
-        conn.close()
+    cur.close()
+    conn.close()
     return render_template('forgot_password.html')
 
 # --- Change password ---
 @app.route('/change-password', methods=['GET', 'POST'])
 @login_required
 def change_password():
+
+    notifications = get_notifications()
+
     if request.method == 'POST':
         current = request.form['current_password']
         new = request.form['new_password']
@@ -181,24 +189,21 @@ def change_password():
             conn.close()
 
             if role:
-                role_name = role[0]
-                if role_name == 'Super Admin':
-                    return redirect(url_for('admin_dashboard'))
-                elif role_name == 'Asset Manager':
-                    return redirect(url_for('manager_dashboard'))
-                elif role_name == 'Asset Entry Officer':
-                    return redirect(url_for('assetentryofficer_dashboard'))
-                elif role_name == 'Technician':
-                    return redirect(url_for('technician_dashboard'))
-                else:
-                    flash('Role not recognized. Please contact administrator.')
-                    return redirect(url_for('login'))
+                return redirect(url_for('dashboard'))
+            else:
+                flash('Role not recognized. Please contact administrator.')
+                return redirect(url_for('login'))
                 
         else:
             flash('Incorrect current password.', 'danger')
         cur.close()
         conn.close()
-    return render_template('change_password.html')
+    return render_template('change_password.html',notifications=notifications,pending_requests=notifications["pending_requests"],
+        pending_count=len(notifications["pending_requests"]),
+        expiring_warranties=notifications["expiring_warranties"],
+        expiring_insurances=notifications["expiring_insurances"],
+        total_users=0,
+        total_count=notifications["total_count"])
 
 # --- Login ---
 @app.route('/login', methods=['GET', 'POST'])
@@ -238,14 +243,8 @@ def login():
                 return redirect(url_for('reset_password'))
 
             # Normal role-based redirection
-            if user.has_role('Super Admin'):
-                return redirect(url_for('admin_dashboard'))
-            elif user.has_role('Asset Manager'):
-                return redirect(url_for('manager_dashboard'))
-            elif user.has_role('Technician'):
-                return redirect(url_for('technician_dashboard'))
-            elif user.has_role('Asset Entry Officer'):
-                return redirect(url_for('assetentryofficer_dashboard'))
+            if user.has_role:
+                return redirect(url_for('dashboard'))
             else:
                 flash('Unauthorized role', 'danger')
                 return redirect(url_for('login')) 
@@ -315,12 +314,13 @@ def contact():
     name = request.form['name']
     email = request.form['email']
     message = request.form['message']
+    phone = request.form['phone']
 
     cur = conn.cursor()
     cur.execute("""
-        INSERT INTO contact_messages (name, email, message)
-        VALUES (%s, %s, %s)
-    """, (name, email, message))
+        INSERT INTO contact_messages (name, email, message, phone)
+        VALUES (%s, %s, %s, %s)
+    """, (name, email, message, phone))
     conn.commit()
     cur.close()
     return redirect(url_for("welcome", msg="Your message has been sent successfully!"))
@@ -330,30 +330,102 @@ def contact():
 def view_messages():
     conn = get_db_connection()
     cur = conn.cursor()
+
+    notifications = get_notifications()
+
     cur.execute("""
-        SELECT id, name AS sender_name, email AS sender_email, message, submitted_at
+        SELECT id, name AS sender_name, email AS sender_email, phone, message, submitted_at
         FROM contact_messages
         ORDER BY submitted_at DESC
     """)
     messages = cur.fetchall()
     cur.close()
-    return render_template("messages.html", messages=messages)
+    return render_template("messages.html", messages=messages,pending_requests=notifications["pending_requests"],
+        pending_count=len(notifications["pending_requests"]),
+        expiring_warranties=notifications["expiring_warranties"],
+        expiring_insurances=notifications["expiring_insurances"],
+        total_users=0,
+        total_count=notifications["total_count"])
 
 # --- Admin Dashboard ---
-@app.route('/admin/dashboard')
+@app.route('/dashboard')
 @login_required
-def admin_dashboard():
-    if not current_user.has_role('Super Admin'):
-        return redirect(url_for('unauthorized'))
+def dashboard():
     
     if 'email' not in session:
         session['email'] = current_user.email
 
     notifications = get_notifications()
 
+    activities = get_recent_activities()  # fetch latest 8 activities
+
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    cur.execute("""
+    SELECT COUNT(DISTINCT asset_id) 
+    FROM maintenance
+    WHERE is_active = TRUE
+    """)
+    assets_under_maintenance = cur.fetchone()[0]
+
+    cur.execute("SELECT COUNT(*) FROM asset")
+    total_assets = cur.fetchone()[0]
+
+    cur.execute("SELECT sum(purchase_cost) as total FROM asset where is_active='True'")
+    total = cur.fetchone()[0]
+
+    cur.execute("SELECT COUNT(*) FROM asset WHERE is_active = TRUE")
+    assets_active = cur.fetchone()[0]
+
+    cur.execute("SELECT COUNT(*) FROM asset WHERE is_active = FALSE")
+    assets_inactive = cur.fetchone()[0]
+
+    cur.execute("SELECT COUNT(*) FROM requests WHERE status='Pending'")
+    pending_assets = cur.fetchone()[0]
+
+    # Fetch asset details for modal
+    cur.execute("""
+        SELECT a.id, a.tag, a.asset_name, c.name, a.is_active, a.purchase_date, a.purchase_cost
+        FROM asset a 
+        JOIN category c ON c.id = a.category_id order by a.purchase_cost desc
+    """)
+    assets = cur.fetchall()
+
+    # Fetch asset details for modal
+    cur.execute("""
+        SELECT a.id, a.tag, a.asset_name, c.name, a.is_active, a.purchase_date, a.purchase_cost
+        FROM asset a 
+        JOIN category c ON c.id = a.category_id 
+        WHERE a.is_active = TRUE
+    """)
+    aas = cur.fetchall()
+
+    # Fetch asset details for modal
+    cur.execute("""
+        SELECT a.id, a.tag, a.asset_name, c.name, a.is_active, a.purchase_date, a.purchase_cost
+        FROM asset a 
+        JOIN category c ON c.id = a.category_id 
+        WHERE a.is_active = FALSE 
+    """)
+    inas = cur.fetchall()
+
+    # --- Fetch maintenance records ---
+    cur.execute("""
+        SELECT m.id, m.from_date, m.to_date, m.company, m.serviced_by, m.cost, m.maintenance_type, m.remarks, m.is_active,
+               a.asset_name as asset_name,
+               p.asset_name AS part_name
+        FROM maintenance m
+        LEFT JOIN asset p ON m.part_id = p.id
+        left join asset a on m.asset_id = a.id
+    """)
+    maintenance_records = cur.fetchall()
+
+    cur.close()
+    conn.close()
+
     return render_template(
-        'admin_dashboard.html',
-        total_assets=0,
+        'dashboard.html',
         pending_requests=notifications["pending_requests"],
         pending_count=len(notifications["pending_requests"]),
         expiring_warranties=notifications["expiring_warranties"],
@@ -363,80 +435,236 @@ def admin_dashboard():
         open_maintenance=0,
         pending_approvals=0,
         recent_logs=[],
-        recent_users=[]
+        recent_users=[],aas=aas, inas=inas, 
+        assets=assets, total=total, 
+        total_assets=total_assets, 
+        assets_active=assets_active, 
+        assets_inactive=assets_inactive, 
+        pending_assets=pending_assets,
+        assets_under_maintenance=assets_under_maintenance, maintenance_records=maintenance_records, notifications=notifications, activities=activities
     )
 
-@app.route('/assetmanager/dashboard')
-@login_required
-def manager_dashboard():
-    if not current_user.has_role('Asset Manager'):
-        return redirect(url_for('unauthorized'))
-    
-    if 'email' not in session:
-        session['email'] = current_user.email
+@app.route("/api/assets_by_lifecycle")
+def assets_by_lifecycle():
+    stage = request.args.get("stage", "").lower()
+    conn = get_db_connection()
+    cur = conn.cursor()
+    query = """
+        SELECT a.id, a.asset_name, c.name as category, a.purchase_date
+        FROM asset a JOIN category c on c.id = a.category_id
+        WHERE a.is_active = TRUE
+    """
+    # Add lifecycle stage filtering based on purchase_date intervals
+    if stage == "new":
+        query += " AND AGE(CURRENT_DATE, purchase_date) < INTERVAL '2 years'"
+    elif stage == "mid-life":
+        query += " AND AGE(CURRENT_DATE, purchase_date) >= INTERVAL '2 years' AND AGE(CURRENT_DATE, purchase_date) < INTERVAL '5 years'"
+    elif stage == "end-of-life":
+        query += " AND AGE(CURRENT_DATE, purchase_date) >= INTERVAL '5 years'"
 
-    notifications = get_notifications()
+    cur.execute(query)
+    rows = cur.fetchall()
+    cur.close()
 
-    return render_template(
-        'manager_dashboard.html',
-        total_assets=0,
-        pending_requests=notifications["pending_requests"],
-        pending_count=len(notifications["pending_requests"]),
-        expiring_warranties=notifications["expiring_warranties"],
-        expiring_insurances=notifications["expiring_insurances"],
-        total_users=0,
-        total_count=notifications["total_count"],
-        open_maintenance=0,
-        pending_approvals=0,
-        recent_logs=[],
-        recent_users=[]
-    )
+    assets = []
+    for row in rows:
+        assets.append({
+            "id": row[0],
+            "asset_name": row[1],
+            "category": row[2],
+            "purchase_date": row[3].isoformat() if row[3] else None
+        })
+    return jsonify(assets)
 
-@app.route('/assetentryofficer/dashboard')
-@login_required
-def assetentryofficer_dashboard():
-    if not current_user.has_role('Asset Entry Officer'):
-        return redirect(url_for('unauthorized'))
-    
-    if 'email' not in session:
-        session['email'] = current_user.email
+@app.route('/api/assets_by_category')
+def assets_by_category():
+    conn = get_db_connection()
+    category = request.args.get("category")
 
-    notifications = get_notifications()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT a.id, a.asset_name, a.purchase_date, a.tag ,a.purchase_cost FROM asset a
+        JOIN category sub ON a.category_id = sub.id          -- join to subcategory
+        JOIN category parent ON sub.parent_id = parent.id    -- join to parent category
+        WHERE parent.name = %s
+    """, (category,))
+    rows = cur.fetchall()
+    cur.close()
 
-    return render_template(
-        'assetentryofficer_dashboard.html',
-        total_assets=0,
-        pending_requests=notifications["pending_requests"],
-        pending_count=len(notifications["pending_requests"]),
-        expiring_warranties=notifications["expiring_warranties"],
-        expiring_insurances=notifications["expiring_insurances"],
-        total_users=0,
-        total_count=notifications["total_count"],
-        open_maintenance=0,
-        pending_approvals=0,
-        recent_logs=[],
-        recent_users=[]
-    )
+    assets = [{"id": r[0], "asset_name": r[1], "purchase_date": r[2], "tag": r[3], "purchase_cost": r[4]} for r in rows]
 
+    return jsonify(assets)
 
-@app.route('/technician/dashboard')
-@login_required
-def technician_dashboard():
-    if not current_user.has_role('Technician'):
-        return redirect(url_for('unauthorized'))
-    
-    if 'email' not in session:
-        session['email'] = current_user.email
+from datetime import datetime
 
-    return render_template(
-        'technician_dashboard.html',
-        total_assets=0,
-        total_users=0,
-        open_maintenance=0,
-        pending_approvals=0,
-        recent_logs=[],
-        recent_users=[]
-    )
+def get_recent_activities():
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    activities = []
+
+    cur.execute("""
+    SELECT r.id, r.request_type, r.asset_id, r.request_date, u.name
+    FROM requests r
+    JOIN user_details u ON r.requested_by = u.id 
+    WHERE status = 'Pending'
+    ORDER BY r.request_date DESC
+    """)
+    for r in cur.fetchall():
+        cur.execute("SELECT asset_name FROM asset WHERE id = %s", (r[2],))
+        asset_name = cur.fetchone()[0] if r[2] else "N/A"
+
+        if r[1] == "add":
+            msg = f"Requested to add asset '{asset_name}' on {r[3].strftime('%Y-%m-%d')} by {r[4]}"
+        elif r[1] == "edit":
+            msg = f"Requested to edit asset '{asset_name}' on {r[3].strftime('%Y-%m-%d')} by {r[4]}"
+        elif r[1] == "assignment":
+            msg = f"Requested assignment for asset '{asset_name}' on {r[3].strftime('%Y-%m-%d')} by {r[4]}"
+        elif r[1] == "insurance":
+            msg = f"Requested insurance for asset '{asset_name}' on {r[3].strftime('%Y-%m-%d')} by {r[4]}"
+        elif r[1] == "maintenance":
+            msg = f"Requested maintenance details for asset '{asset_name}' on {r[3].strftime('%Y-%m-%d')} by {r[4]}"
+        else:
+            msg = f"Request submitted: {r[1]} for {asset_name} by {r[4]}"
+
+        activities.append({
+            "id": r[0],
+            "message": msg,
+            "time": r[3].strftime("%Y-%m-%d %H:%M"),   # full date+time
+            "url": "/approve_requests_page"
+        })
+
+    cur.close()
+    conn.close()
+
+    # Sort all activities by time descending
+    activities.sort(key=lambda x: x["time"], reverse=True)
+
+    return activities 
+
+# --- API: Asset Category Distribution ---
+@app.route("/api/category_distribution")
+def category_distribution():
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT parent.name AS category, COUNT(a.id)
+        FROM asset a
+        JOIN category sub ON a.category_id = sub.id
+        JOIN category parent ON sub.parent_id = parent.id
+        GROUP BY parent.name
+        ORDER BY parent.name;
+    """)
+    data = cur.fetchall()
+    cur.close()
+    conn.close()
+
+    categories = [row[0] for row in data]
+    counts = [row[1] for row in data]
+
+    return jsonify({"labels": categories, "data": counts})
+
+@app.route("/api/lifecycle_distribution")
+def lifecycle_distribution():
+    conn = get_db_connection()
+    cur = conn.cursor()
+    query = """
+        SELECT 
+            SUM(CASE WHEN AGE(CURRENT_DATE, a.purchase_date) < INTERVAL '2 years' THEN 1 ELSE 0 END) AS new_assets,
+            SUM(CASE WHEN AGE(CURRENT_DATE, a.purchase_date) >= INTERVAL '2 years' 
+                      AND AGE(CURRENT_DATE, a.purchase_date) < INTERVAL '5 years' THEN 1 ELSE 0 END) AS mid_life_assets,
+            SUM(CASE WHEN AGE(CURRENT_DATE, a.purchase_date) >= INTERVAL '5 years' THEN 1 ELSE 0 END) AS end_of_life_assets
+        FROM asset a
+        WHERE a.is_active = TRUE;
+    """
+    cur.execute(query)
+    row = cur.fetchone()
+    cur.close()
+
+    data = {
+        "labels": ["New", "Mid-Life", "End-of-Life"],
+        "data": [row[0], row[1], row[2]]
+    }
+    return jsonify(data)
+
+@app.route("/api/maintenance_trend")
+def maintenance_trend():
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT TO_CHAR(from_date, 'YYYY-MM') AS month,
+               SUM(cost) AS total_cost
+        FROM maintenance 
+        WHERE is_active = true AND maintenance_type = 'Maintenance'
+        GROUP BY month
+        ORDER BY month
+    """)
+    rows = cur.fetchall()
+    cur.close()
+    return jsonify({
+        "labels": [r[0] for r in rows],
+        "data": [float(r[1]) for r in rows]
+    })
+
+@app.route("/api/maintenance_events")
+def maintenance_events():
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    # Normal maintenance
+    cur.execute("""
+        SELECT m.id, a.asset_name, m.from_date, m.to_date, m.maintenance_type, m.serviced_by, m.company, m.cost, m.remarks, p.asset_name
+        FROM maintenance m
+        JOIN asset a ON m.asset_id = a.id
+        LEFT JOIN asset p on m.part_id = p.id
+        WHERE m.is_active = TRUE
+    """)
+    maintenance_rows = cur.fetchall()
+
+    # Monthly maintenance
+    cur.execute("""
+        SELECT mm.id, a.asset_name, mm.maintenance_date, mm.serviced_by, mm.remarks, p.asset_name
+        FROM monthly_maintenance mm
+        JOIN asset a ON mm.asset_id = a.id
+        LEFT JOIN asset p on mm.part_id = p.id
+        WHERE mm.is_active = TRUE
+    """)
+    monthly_rows = cur.fetchall()
+
+    events = []
+
+    for row in maintenance_rows:
+        events.append({
+            "id": f"m-{row[0]}",
+            "title": f"{row[1]} - {row[4]}",
+            "start": row[2].isoformat(),
+            "end": row[3].isoformat() if row[3] else None,
+            "color": "#fd7e14" if row[4].lower() == "repair" else "#28a745",
+            "serviced_by": row[5],
+            "asset_name": row[1],
+            "company": row[6],
+            "cost": row[7],
+            "maintenance_type": row[4],
+            "remarks": row[8],
+            "part_name": row[9]
+        })
+
+    for row in monthly_rows:
+        events.append({
+            "id": f"mm-{row[0]}",
+            "title": f"{row[1]} - Monthly",
+            "start": row[2].isoformat(),
+            "color": "#007bff",
+            "serviced_by": row[3],
+            "asset_name": row[1],
+            "company": None,
+            "cost": None,
+            "maintenance_type": "Monthly Maintenance",
+            "remarks": row[4],
+            "part_name": row[5]
+        })
+
+    return jsonify(events)
 
 def get_notifications():
     conn = get_db_connection()
@@ -468,14 +696,15 @@ def get_notifications():
     """)
     expiring_insurances = cur.fetchall()
 
-    # Pending requests
-    cur.execute("""
-        SELECT r.id, r.request_type, u.name AS request_by
-        FROM requests r
-        JOIN user_details u ON r.requested_by = u.id
-        WHERE r.status = 'Pending' AND r.is_active = TRUE
-    """)
-    pending_requests = cur.fetchall()
+    pending_requests = []
+    if current_user.has_role('Asset Manager'):
+        cur.execute("""
+            SELECT r.id, r.request_type, u.name AS requested_by
+            FROM requests r
+            JOIN user_details u ON r.requested_by = u.id
+            WHERE r.status = 'Pending' AND r.is_active = TRUE
+        """)
+        pending_requests = cur.fetchall()
 
     conn.close()
     cur.close()
@@ -493,6 +722,8 @@ def view_notifications():
     conn = get_db_connection()
     cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
 
+    notifications = get_notifications()
+
     save_all_notifications()
 
     cur.execute("""
@@ -500,12 +731,21 @@ def view_notifications():
         FROM notification
         ORDER BY created_at DESC
     """)
-    notifications = cur.fetchall()
+    notification = cur.fetchall()
 
     cur.close()
     conn.close()
 
-    return render_template('notification.html', notifications=notifications)
+    return render_template('notification.html', pending_requests=notifications["pending_requests"],
+        pending_count=len(notifications["pending_requests"]),
+        expiring_warranties=notifications["expiring_warranties"],
+        expiring_insurances=notifications["expiring_insurances"],
+        total_users=0,
+        total_count=notifications["total_count"],
+        open_maintenance=0,
+        pending_approvals=0,
+        recent_logs=[],
+        recent_users=[], notifications=notifications ,notification=notification   )
 
 def save_all_notifications():
     conn = get_db_connection()
@@ -563,27 +803,13 @@ def save_all_notifications():
     cur.close()
     conn.close()
 
-def get_all_notifications():
-    conn = get_db_connection()
-    cur = conn.cursor()
-
-    cur.execute("""
-        SELECT id, user_id, message, type, related_id, created_at
-        FROM notification
-        ORDER BY created_at DESC
-    """)
-    notifications = cur.fetchall()
-
-    cur.close()
-    conn.close()
-    return notifications
-# ------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
 @app.route('/admin/view_users')
 @login_required
 def view_users():
     if not (current_user.has_role('Super Admin') or current_user.has_role('Asset Manager')):
         return redirect(url_for('unauthorized'))
+    
+    notifications = get_notifications()
 
     conn = get_db_connection()
     cur = conn.cursor()
@@ -593,7 +819,10 @@ def view_users():
             u.email,
             u.name,
             r.name,
-            u.last_login
+            u.last_login,
+            u.date_of_joining,
+            u.phone,
+            u.is_active
         FROM user_details u
         JOIN role r ON u.role_id = r.id
         ORDER BY u.id;
@@ -602,7 +831,9 @@ def view_users():
     cur.close()
     conn.close()
 
-    return render_template('view_users.html', users=users)
+    return render_template('view_users.html', users=users,pending_requests=notifications["pending_requests"],pending_count=len(notifications["pending_requests"]),
+        expiring_warranties=notifications["expiring_warranties"],expiring_insurances=notifications["expiring_insurances"],
+        total_users=0,total_count=notifications["total_count"],open_maintenance=0,pending_approvals=0,recent_logs=[])
 
 @app.route('/admin/user/<int:user_id>')
 @login_required
@@ -612,41 +843,64 @@ def user_detail(user_id):
 
     conn = get_db_connection()
     cur = conn.cursor()
+
+    notifications = get_notifications()
+
+    # Fetch user details
+    cur.execute("SELECT u.*,r.name as role_name FROM user_details u join role r on r.id=u.role_id WHERE u.id = %s", (user_id,))
+    user_row = cur.fetchone()
+    user_columns = [desc[0] for desc in cur.description]
+    user = dict(zip(user_columns, user_row))
+
+    if not user.get('bank_details'):
+        user['bank_details'] = {}
+
+    # Fetch files for the user
+    cur.execute("SELECT * FROM files WHERE user_id = %s AND is_active = true", (user_id,))
+    file_rows = cur.fetchall()
+    file_columns = [desc[0] for desc in cur.description]
+    files = [dict(zip(file_columns, row)) for row in file_rows]
+
+    # Fetch role & salary history
     cur.execute("""
-        SELECT 
-            u.id,
-            u.email,
-            u.name,
-            u.last_login,
-            r.name,
-            u.created_at,
-            u.is_active,
-            u.phone,
-            u.address,
-            u.date_of_birth,
-            u.gender,
-            u.date_of_joining,
-            u.id_proof_type,
-            u.id_proof_number
-        FROM user_details u
-        JOIN role r ON u.role_id = r.id
-        WHERE u.id = %s;
+        SELECT ursh.*, r.name AS role_name
+        FROM user_role_salary_history ursh
+        JOIN role r ON r.id = ursh.role_id
+        WHERE ursh.user_id = %s
+        ORDER BY ursh.start_date DESC
     """, (user_id,))
-    user = cur.fetchone()
+    history_rows = cur.fetchall()
+    history_columns = [desc[0] for desc in cur.description]
+    history = [dict(zip(history_columns, row)) for row in history_rows]
+
+    # Get all assets assigned to this user
+    cur.execute("""
+    SELECT a.id AS asset_id, a.asset_name, ass.assigned_from, ass.assigned_until, ass.remarks, u.name AS assigned_to
+    FROM assignments ass
+    JOIN asset a ON a.id = ass.asset_id
+    LEFT JOIN user_details u ON u.id = ass.user_id
+    WHERE ass.user_id = %s
+    ORDER BY ass.assigned_from DESC
+""", (user_id,))
+    assignments = cur.fetchall()
+    assignment_columns = [desc[0] for desc in cur.description]
+    assignments = [dict(zip(assignment_columns, row)) for row in assignments]
+
+
     cur.close()
     conn.close()
 
-    if not user:
-        flash('User not found', 'danger')
-        return redirect(url_for('view_users'))
-
-    return render_template('user_detail.html', user=user)
+    return render_template('user_detail.html', user=user, files=files, history=history, assignments=assignments,pending_requests=notifications["pending_requests"],pending_count=len(notifications["pending_requests"]),
+        expiring_warranties=notifications["expiring_warranties"],expiring_insurances=notifications["expiring_insurances"],
+        total_users=0,total_count=notifications["total_count"],open_maintenance=0,pending_approvals=0,recent_logs=[])
 
 @app.route('/add_user', methods=['GET', 'POST'])
 @login_required
 def add_user():
     if not current_user.has_role('Asset Manager'):
         return redirect(url_for('unauthorized'))
+    
+    notifications = get_notifications()
 
     conn = get_db_connection()
     cur = conn.cursor()
@@ -654,20 +908,37 @@ def add_user():
     roles = cur.fetchall()
 
     if request.method == 'POST':
-        name = request.form.get('name')
-        email = request.form['email']
-        role_id = request.form['role_id']
-
-        new_role = request.form.get('new_role') 
-        is_active = request.form.get('is_active') == 'on'
-
-        password_hash = generate_password_hash('default123')
-        created_at = datetime.utcnow()
-
         try:
-            # If new role selected
+            name = request.form.get('name')
+            email = request.form['email']
+            role_id = request.form['role_id']
+            phone = request.form.get('phone')
+            address = request.form.get('address')
+            date_of_birth = request.form.get('date_of_birth')
+            gender = request.form.get('gender')
+            date_of_joining = request.form.get('date_of_joining')
+
+            bank_details = json.dumps({
+                "bank_name": request.form['bank_name'],
+                "account_number": request.form['account_number'],
+                "ifsc": request.form['ifsc'],
+                "branch": request.form.get('branch', ''),
+                "account_type": request.form.get('account_type', '')
+            })
+
+            aadhaar_number = request.form.get('aadhaar_number')
+            pan_number = request.form.get('pan_number')
+            salary = request.form.get('salary')
+            qualification = request.form.get('qualification')
+            remarks = request.form.get('remarks')
+            new_role = request.form.get('new_role') 
+            is_active = request.form.get('is_active') == 'on'
+
+            password_hash = generate_password_hash('default123')
+            created_at = datetime.utcnow()
+
+            # Handle new role if selected
             if role_id == 'new' and new_role:
-                # Check if role already exists
                 cur.execute("SELECT id FROM role WHERE name = %s", (new_role,))
                 existing = cur.fetchone()
                 if existing:
@@ -676,47 +947,114 @@ def add_user():
                     cur.execute("INSERT INTO role (name) VALUES (%s) RETURNING id", (new_role,))
                     role_id = cur.fetchone()[0]
                     conn.commit()
-
-                    # Fix the sequence in case of manual inserts
                     cur.execute("SELECT setval(pg_get_serial_sequence('role', 'id'), (SELECT MAX(id) FROM role))")
                     conn.commit()
 
+            # Insert user
             cur.execute("""
-                INSERT INTO user_details (name, email, password_hash, role_id, is_active, created_at, force_password_reset)
-                VALUES (%s, %s, %s, %s, %s, %s, TRUE)
+                INSERT INTO user_details
+                (name, email, password_hash, role_id, is_active, created_at, force_password_reset, 
+                 phone, address, date_of_birth, gender, date_of_joining, bank_details, 
+                 aadhaar_number, pan_number, salary, qualification, remarks)
+                VALUES (%s, %s, %s, %s, %s, %s, TRUE, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 RETURNING id
-            """, (name, email, password_hash, role_id, is_active, created_at))
+            """, (name, email, password_hash, role_id, is_active, created_at, phone, address, 
+                  date_of_birth, gender, date_of_joining, bank_details, aadhaar_number, pan_number, 
+                  salary, qualification, remarks))
+            
             new_user_id = cur.fetchone()[0]
             conn.commit()
 
+            start_date = datetime.strptime(date_of_joining, '%Y-%m-%d').date() if date_of_joining else datetime.now().date()
+
+            # Record initial role and salary in history table
+            cur.execute("""INSERT INTO user_role_salary_history (user_id, role_id, salary, start_date, remarks,is_active) VALUES (%s, %s, %s, %s, %s,%s)
+            """, (new_user_id, role_id, salary, start_date, 'Initial role and salary',True))
+            conn.commit()
+
+            # File types mapping
+            file_fields = {'photo': 'Profile Photo','aadhaar_file': 'Aadhaar Card','pan_file': 'PAN Card'}
+
+            for form_field, file_type in file_fields.items():
+                file = request.files.get(form_field)
+                if file and file.filename.strip():
+                    filename = secure_filename(file.filename)
+
+                    if file_type == 'Profile Photo':
+                        folder_path = os.path.join('static', 'uploads', 'profile_photos')
+                    else:
+                        folder_path = os.path.join('static', 'uploads')
+
+                    os.makedirs(folder_path, exist_ok=True)
+
+                    filepath = os.path.join(folder_path, filename)
+                    file.save(filepath)
+
+        # Store relative path for DB
+                    relative_path = os.path.relpath(filepath, 'static').replace("\\", "/")
+                    relative_path = f"static/{relative_path}"
+
+        # Insert into files table
+                    cur.execute("""
+            INSERT INTO files (user_id, file_name, file_path, uploaded_by, is_active)
+            VALUES (%s, %s, %s, %s, TRUE)
+        """, (new_user_id, filename, relative_path, current_user.id))
+                    conn.commit()
+
+            # Send welcome email
             msg = Message(
-        subject="Welcome to SVE System",
-        recipients=[email],
-        body=f"""Hello {name},
+                subject="Welcome to SVE System",
+                recipients=[email],
+                body=f"""Hello {name},
 
-Your account has been created in the SVE System.
+welcome to Sree Venkateshwara Enterprises!!
+Your account has been created in the SVE System. Please check your details below:
 
+Name: {name}
 Email: {email}
+Phone: {phone}
+Address: {address}
+Date of Birth: {date_of_birth}
+Gender: {gender}
+Date of Joining: {date_of_joining}
+Aadhaar Number: {aadhaar_number}
+PAN Number: {pan_number}
+Salary: {salary}
+Qualification: {qualification}
+
+Bank Details:
+  Bank Name: {bank_details.get('bank_name', '')}
+  Account Number: {bank_details.get('account_number', '')}
+  IFSC: {bank_details.get('ifsc', '')}
+  Branch: {bank_details.get('branch', '')}
+  Account Type: {bank_details.get('account_type', '')}
+
 Temporary Password: default123
 
 Please login and change your password.
 
+If any of the above details are incorrect, please contact the SVE Admin Team.
+
 Regards,  
 SVE Admin Team
 """
-    )
+            )
             mail.send(msg)
-            
+
             flash("User created successfully with default password 'default123'", 'success')
             return redirect(url_for('view_users'))
+
         except Exception as e:
             conn.rollback()
             flash(f'Error adding user: {e}', 'danger')
+
         finally:
             cur.close()
             conn.close()
 
-    return render_template('add_user.html', roles=roles)
+    return render_template('add_user.html', roles=roles,pending_requests=notifications["pending_requests"],pending_count=len(notifications["pending_requests"]),
+        expiring_warranties=notifications["expiring_warranties"],expiring_insurances=notifications["expiring_insurances"],
+        total_users=0,total_count=notifications["total_count"],open_maintenance=0,pending_approvals=0,recent_logs=[])
 
 @app.route('/manager/edit_user/<int:user_id>', methods=['GET', 'POST'])
 @login_required
@@ -727,59 +1065,207 @@ def edit_user(user_id):
     conn = get_db_connection()
     cur = conn.cursor()
 
-    # Fetch user record
-    cur.execute("SELECT id, name, email, password_hash, role_id, is_active FROM user_details WHERE id = %s", (user_id,))
-    user = cur.fetchone()
+    notifications = get_notifications()
 
-    # Handle missing user
+    # Fetch user record including all fields
+    cur.execute("""
+        SELECT id, name, email, role_id, is_active, phone, address, date_of_birth, gender,
+               date_of_joining, bank_details, aadhaar_number, pan_number, salary, qualification, remarks
+        FROM user_details
+        WHERE id = %s
+    """, (user_id,))
+    user = cur.fetchone()
     if not user:
         flash("User not found.", "danger")
         cur.close()
         conn.close()
         return redirect(url_for('manager_dashboard'))
-    
-    conn = get_db_connection()
-    cur = conn.cursor()
-    
+
+    # Convert tuple to dict
+    user = dict(zip([desc[0] for desc in cur.description], user))
+
+    # Convert bank_details JSON string to dict
+    if user.get('bank_details'):
+        if isinstance(user['bank_details'], str):
+            user['bank_details'] = json.loads(user['bank_details'])
+        else:
+            user['bank_details'] = user['bank_details']
+    else:
+        user['bank_details'] = {}
+
+    # Fetch roles
     cur.execute("SELECT id, name FROM role")
     roles = cur.fetchall()
 
+    user_files = {'photo': None, 'aadhaar_file': None, 'pan_file': None}# always initialize
+    cur.execute("SELECT file_name, file_path FROM files WHERE user_id=%s AND is_active=TRUE", (user_id,))
+    files = cur.fetchall()
+
+    for f in files:
+        name, path = f
+        if 'profile_photos' in path.lower():
+            user_files['photo'] = path
+        elif 'aadhaar' in name.lower():
+            user_files['aadhaar_file'] = path
+        elif 'pan' in name.lower():
+            user_files['pan_file'] = path
+
     if request.method == 'POST':
-        name = request.form.get('name')
-        email = request.form['email']
-        role_id = int(request.form['role_id'])
-        is_active = request.form.get('is_active') == 'on'
+        try:
+            name = request.form.get('name')
+            email = request.form['email']
+            role_id = int(request.form['role_id'])
+            is_active = request.form.get('is_active') == 'on'
+            phone = request.form.get('phone')
+            address = request.form.get('address')
+            date_of_birth = request.form.get('date_of_birth')
+            gender = request.form.get('gender')
+            date_of_joining = request.form.get('date_of_joining')
+            aadhaar_number = request.form.get('aadhaar_number')
+            pan_number = request.form.get('pan_number')
+            salary = request.form.get('salary')
+            qualification = request.form.get('qualification')
+            remarks = request.form.get('remarks')
 
-        cur.execute("""
-            UPDATE user_details 
-            SET name=%s, email=%s,  role_id = %s, is_active=%s
-            WHERE id=%s
-        """, (name, email, role_id, is_active, user_id))
-        conn.commit()
+            bank_details = {
+                "bank_name": request.form.get('bank_name', ''),
+                "account_number": request.form.get('account_number', ''),
+                "ifsc": request.form.get('ifsc', ''),
+                "branch": request.form.get('branch', ''),
+                "account_type": request.form.get('account_type', '')
+            }
 
-        msg = Message(
-    subject="Your SVE Account Was Updated",
-    recipients=[email],
-    body=f"""Hello {name},
+            cur.execute("""
+                UPDATE user_details
+                SET name=%s, email=%s, role_id=%s, is_active=%s,
+                    phone=%s, address=%s, date_of_birth=%s, gender=%s,
+                    date_of_joining=%s, bank_details=%s, aadhaar_number=%s,
+                    pan_number=%s, salary=%s, qualification=%s, remarks=%s
+                WHERE id=%s
+            """, (name, email, role_id, is_active, phone, address, date_of_birth, gender,
+                  date_of_joining, json.dumps(bank_details), aadhaar_number, pan_number,
+                  salary, qualification, remarks, user_id))
+            conn.commit()
 
-Your account information has been updated.
+            # Check if role or salary changed
+            cur.execute("""
+                SELECT * FROM user_role_salary_history
+                WHERE user_id=%s AND is_active=TRUE
+            """, (user_id,))
+            active_history = cur.fetchone()
 
-If you did not request these changes, please contact the admin.
+            if active_history:
+                old_role_id = active_history[2]
+                old_salary = active_history[3]
 
-Regards,  
+                if str(old_role_id) != str(role_id) or str(old_salary) != str(salary):
+                    # Make old history inactive
+                    cur.execute("""
+                        UPDATE user_role_salary_history
+                        SET is_active=FALSE, end_date=CURRENT_DATE
+                        WHERE id=%s
+                    """, (active_history[0],))
+                    conn.commit()
+
+                    # Insert new history record
+                    cur.execute("""
+                        INSERT INTO user_role_salary_history
+                        (user_id, role_id, salary, start_date, remarks, is_active)
+                        VALUES (%s, %s, %s, CURRENT_DATE, 'Updated role/salary', TRUE)
+                    """, (user_id, role_id, salary))
+                    conn.commit()
+
+            # Handle file uploads
+            file_fields = {'photo':'photo','aadhaar_file':'aadhaar_file','pan_file':'pan_file'}
+            for form_field, key in file_fields.items():
+                file = request.files.get(form_field)
+                if file and file.filename.strip():
+                    filename = secure_filename(file.filename)
+                    folder = 'static/uploads/profile_photos' if key=='photo' else 'static/uploads'
+                    os.makedirs(folder, exist_ok=True)
+                    filepath = os.path.join(folder, filename)
+                    file.save(filepath)
+                    relative_path = os.path.relpath(filepath, 'static').replace("\\","/")
+                    relative_path = f"static/{relative_path}"
+
+                    # Insert or update file record
+                    cur.execute("SELECT id FROM files WHERE user_id=%s AND file_name=%s AND is_active=TRUE", (user_id, filename))
+                    existing_file = cur.fetchone()
+                    if existing_file:
+                        cur.execute("UPDATE files SET file_path=%s WHERE id=%s", (relative_path, existing_file[0]))
+                    else:
+                        cur.execute("""
+                            INSERT INTO files (user_id, file_name, file_path, uploaded_by, is_active)
+                            VALUES (%s,%s,%s,%s,TRUE)
+                        """, (user_id, filename, relative_path, current_user.id))
+                    conn.commit()
+
+            # Send update email
+            msg = Message(
+                subject="Your SVE Account Was Updated",
+                recipients=[email],
+                body=f"""Hello {name},
+
+Your account information has been updated. Please check your details below:
+
+Name: {name}
+Email: {email}
+Phone: {phone}
+Address: {address}
+Date of Birth: {date_of_birth}
+Gender: {gender}
+Date of Joining: {date_of_joining}
+Aadhaar Number: {aadhaar_number}
+PAN Number: {pan_number}
+Salary: {salary}
+Qualification: {qualification}
+
+Bank Details:
+  Bank Name: {bank_details.get('bank_name','')}
+  Account Number: {bank_details.get('account_number','')}
+  IFSC: {bank_details.get('ifsc','')}
+  Branch: {bank_details.get('branch','')}
+  Account Type: {bank_details.get('account_type','')}
+
+If any of the above details are incorrect, please contact the SVE Admin Team.
+
+Regards,
 SVE Admin Team
 """
-)
-        mail.send(msg)
+            )
+            mail.send(msg)
 
-        flash('User updated successfully.', 'success')
-        cur.close()
-        conn.close()
-        return redirect(url_for('user_detail', user_id=user_id))
+            flash('User updated successfully.', 'success')
+            cur.close()
+            conn.close()
+            return redirect(url_for('user_detail', user_id=user_id))
+
+        except Exception as e:
+            conn.rollback()
+            flash(f'Error updating user: {e}', 'danger')
 
     cur.close()
     conn.close()
-    return render_template('edit_user.html', user=user, roles=roles)
+    return render_template('edit_user.html', user=user, roles=roles, user_files=user_files, pending_requests=notifications["pending_requests"],pending_count=len(notifications["pending_requests"]),
+        expiring_warranties=notifications["expiring_warranties"],expiring_insurances=notifications["expiring_insurances"],
+        total_users=0,total_count=notifications["total_count"],open_maintenance=0,pending_approvals=0,recent_logs=[])
+
+@app.route('/asset/qr/<string:asset_tag>')
+def view_asset_by_tag(asset_tag):
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+
+    cur.execute("SELECT a.*, c.name FROM asset a join category c on a.category_id=c.id WHERE tag = %s", (asset_tag,))
+    asset = cur.fetchone()
+    cur.close()
+    conn.close()
+
+    if not asset:
+        return "Asset not found", 404
+
+    return render_template("view_qr.html", asset=asset)
+
+#----------------------------------------------------------------------------------------------------------------------------------------------------
 
 @app.route('/view_assets')
 @login_required
@@ -789,9 +1275,11 @@ def view_assets():
     user_pending_requests = []
     is_asset_entry_officer = current_user.has_role('Asset Entry Officer')
 
+    notifications = get_notifications()
+
     if is_asset_entry_officer:
         cur.execute("""
-        SELECT r.id AS request_id, r.asset_id, r.request_type, r.request_date, a.asset_name 
+        SELECT r.id AS request_id, r.asset_id, r.request_type, r.request_date, a.asset_name, r.assignment_id, r.insurance_id 
         FROM requests r
         JOIN asset a ON r.asset_id = a.id
         WHERE r.requested_by = %s 
@@ -814,17 +1302,17 @@ def view_assets():
         'view_assets.html',
         assets=assets,
         user_pending_requests=user_pending_requests,
-        is_asset_entry_officer=is_asset_entry_officer
+        is_asset_entry_officer=is_asset_entry_officer,pending_requests=notifications["pending_requests"],pending_count=len(notifications["pending_requests"]),
+        expiring_warranties=notifications["expiring_warranties"],expiring_insurances=notifications["expiring_insurances"],
+        total_users=0,total_count=notifications["total_count"],open_maintenance=0,pending_approvals=0,recent_logs=[]
     )
 
 @app.route("/asset/<int:asset_id>")
 def asset_details(asset_id):
-    if not (current_user.has_role('Asset Manager') or current_user.has_role('Super Admin') or current_user.has_role('Asset Entry Officer')):
-        return redirect(url_for('unauthorized'))
-    
     conn = get_db_connection()
     cur = conn.cursor()
 
+    notifications = get_notifications()
 
     # Get main asset details
     cur.execute("""
@@ -866,13 +1354,6 @@ WHERE a.id = %s;
     """, (asset_id,))
     assignments = cur.fetchall()
 
-    # Get maintenance records
-    cur.execute("""
-        SELECT task_done, maintenance_date, cost, service_by
-        FROM maintenance
-        WHERE asset_id = %s ORDER BY maintenance_date DESC
-    """, (asset_id,))
-    maintenance = cur.fetchall()
 
     # Get warranty info
     cur.execute("""
@@ -881,12 +1362,44 @@ WHERE a.id = %s;
     """, (asset_id,))
     warranty = cur.fetchone()
 
+    expiry_date = None
+    if warranty and asset[3]:
+        try:
+        # Only add relativedelta if asset[2] is a proper date object
+            expiry_date = asset[3] + relativedelta(years=warranty[0])
+        except TypeError:
+        # If asset[2] is not a date, skip calculation
+            expiry_date = None
+
     # Get insurance info
     cur.execute("""
-        SELECT policy_number, provider_details, insured_value, start_date, end_date, insurance_premium
-        FROM insurances WHERE asset_id = %s
+    SELECT policy_number, provider_details, insured_value, start_date, end_date, insurance_premium
+    FROM insurances
+    WHERE asset_id = %s 
     """, (asset_id,))
-    insurance = cur.fetchone()
+    insurance_records = cur.fetchall()
+
+    # --- Fetch maintenance records ---
+    cur.execute("""
+        SELECT m.id, m.from_date, m.to_date, m.company, m.serviced_by, m.cost, m.maintenance_type, m.remarks, m.is_active,
+               p.asset_name AS part_name
+        FROM maintenance m
+        LEFT JOIN asset p ON m.part_id = p.id
+        WHERE m.asset_id = %s
+        ORDER BY m.from_date DESC
+    """, (asset_id,))
+    maintenance_records = cur.fetchall()
+
+    # --- Fetch monthly maintenance records ---
+    cur.execute("""
+        SELECT mm.id, mm.maintenance_date, mm.remarks, mm.serviced_by, mm.is_active,
+               p.asset_name AS part_name
+        FROM monthly_maintenance mm
+        LEFT JOIN asset p ON mm.part_id = p.id
+        WHERE mm.asset_id = %s
+        ORDER BY mm.maintenance_date DESC
+    """, (asset_id,))
+    monthly_records = cur.fetchall()
 
         # Get uploaded files
     upload_folder = os.path.join(app.root_path, 'static', 'uploads')
@@ -915,10 +1428,11 @@ WHERE a.id = %s;
     """, (asset_id,))
     files = cur.fetchall()
 
-    return render_template("asset_details.html", asset=asset, assignments=assignments,
-                           maintenance=maintenance, warranty=warranty,
-                           insurance=insurance, files=files)
-
+    return render_template("asset_details.html", asset=asset, assignments=assignments, warranty=warranty,
+                           insurance_records=insurance_records, files=files, expiry_date=expiry_date, maintenance_records=maintenance_records, 
+                           monthly_records=monthly_records, pending_requests=notifications["pending_requests"],pending_count=len(notifications["pending_requests"]),
+        expiring_warranties=notifications["expiring_warranties"],expiring_insurances=notifications["expiring_insurances"],
+        total_users=0,total_count=notifications["total_count"],open_maintenance=0,pending_approvals=0,recent_logs=[])
 
 @app.route('/asset/<int:asset_id>/download_pdf')
 @login_required
@@ -928,8 +1442,8 @@ def download_asset_pdf(asset_id):
 
     # Get asset and related data
     cur.execute("""
-        SELECT a.id, a.asset_name, a.description, a.purchase_date, a.purchase_cost, a.remarks, a.is_active,
-               c.name AS category, v.name AS vendor, a.tag
+        SELECT a.asset_name, a.description, a.purchase_date, a.purchase_cost, a.remarks,
+               c.name AS category, v.name AS vendor, a.tag, a.is_active
         FROM asset a
         LEFT JOIN category c ON a.category_id = c.id
         LEFT JOIN vendors v ON a.id = v.asset_id
@@ -984,7 +1498,7 @@ def download_asset_pdf(asset_id):
     pdf.set_font("Arial", 'B', 11)
     pdf.cell(0, 10, "Asset Details", ln=True)
     pdf.set_font("Arial", '', 10)
-    labels = ["ID", "Name", "Description", "Purchase Date", "Purchase Cost", "Remarks", "Category", "Vendor", "Tag", "Is Active"]
+    labels = ["Name", "Description", "Purchase Date", "Purchase Cost", "Remarks", "Category", "Vendor", "Tag", "Is Active"]
     for i, label in enumerate(labels):
         value = asset[i] if asset[i] else '-'
         if label == "Purchase Cost":
@@ -1037,7 +1551,7 @@ def download_asset_pdf(asset_id):
     pdf_bytes = pdf.output(dest='S').encode('latin-1', errors='replace')
     pdf_output.write(pdf_bytes)
     pdf_output.seek(0)
-    return send_file(pdf_output, as_attachment=True, download_name=f"{asset[1]}_report.pdf", mimetype='application/pdf')
+    return send_file(pdf_output, as_attachment=True, download_name=f"{asset[0]}_report.pdf", mimetype='application/pdf')
 
 @app.route('/asset/<string:asset_tag>/download_qr')
 @login_required
@@ -1087,27 +1601,14 @@ def qr_img(asset_tag):
 
     # Serve image inline (no download)
     return send_file(buf, mimetype='image/png')
-
-@app.route('/asset/qr/<string:asset_tag>')
-def view_asset_by_tag(asset_tag):
-    conn = get_db_connection()
-    cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
-
-    cur.execute("SELECT a.*, c.name FROM asset a join category c on a.category_id=c.id WHERE tag = %s", (asset_tag,))
-    asset = cur.fetchone()
-    cur.close()
-    conn.close()
-
-    if not asset:
-        return "Asset not found", 404
-
-    return render_template("view_qr.html", asset=asset)
     
 @app.route('/view_requests')
 @login_required
 def view_requests():
     conn = get_db_connection()
     cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+
+    notifications = get_notifications()
 
     cur.execute("""
         SELECT r.id, r.request_type, r.status, r.request_date,
@@ -1119,13 +1620,17 @@ def view_requests():
     """)
     requests = cur.fetchall()
 
-    return render_template("view_requests.html", requests=requests)
+    return render_template("view_requests.html", requests=requests,pending_requests=notifications["pending_requests"],pending_count=len(notifications["pending_requests"]),
+        expiring_warranties=notifications["expiring_warranties"],expiring_insurances=notifications["expiring_insurances"],
+        total_users=0,total_count=notifications["total_count"],open_maintenance=0,pending_approvals=0,recent_logs=[])
 
 @app.route('/approve_request/<int:request_id>', methods=['GET', 'POST'])
 @login_required
 def approve_request_page(request_id):
     conn = get_db_connection()
     cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+
+    notifications = get_notifications()
 
     # Get request + asset + category + user info
     cur.execute("""
@@ -1154,17 +1659,27 @@ def approve_request_page(request_id):
     cur.execute("SELECT * FROM vendors WHERE asset_id = %s", (asset_id,))
     vendor = cur.fetchone()
 
-    cur.execute("SELECT * FROM maintenance m JOIN asset a ON a.id = m.asset_id WHERE asset_id = %s", (asset_id,))
-    maintenance = cur.fetchone()
-
-    # Get parts (child assets) related to this maintenance asset
+    # --- Fetch maintenance records ---
     cur.execute("""
-    SELECT a.*, c.name AS category_name
-    FROM asset a
-    LEFT JOIN category c ON a.category_id = c.id
-    WHERE a.parent_asset_id = %s 
-""", (asset_id,))
-    maintenance_parts = cur.fetchall()
+        SELECT m.id, m.from_date, m.to_date, m.company, m.serviced_by, m.cost, m.maintenance_type, m.remarks, m.is_active,
+               p.asset_name AS part_name
+        FROM maintenance m
+        LEFT JOIN asset p ON m.part_id = p.id
+        WHERE m.asset_id = %s
+        ORDER BY m.from_date DESC
+    """, (asset_id,))
+    maintenance_records = cur.fetchall()
+
+    # --- Fetch monthly maintenance records ---
+    cur.execute("""
+        SELECT mm.id, mm.maintenance_date, mm.remarks, mm.serviced_by, mm.is_active,
+               p.asset_name AS part_name
+        FROM monthly_maintenance mm
+        LEFT JOIN asset p ON mm.part_id = p.id
+        WHERE mm.asset_id = %s
+        ORDER BY mm.maintenance_date DESC
+    """, (asset_id,))
+    monthly_records = cur.fetchall()
 
     cur.execute("""
     SELECT file_name, file_path
@@ -1217,8 +1732,10 @@ def approve_request_page(request_id):
                            vendor=vendor,
                            files=files,
                            assignments=assignments,
-                           maintenance=maintenance,
-                           maintenance_parts=maintenance_parts)
+                           maintenance_records=maintenance_records,monthly_records=monthly_records,
+                           pending_requests=notifications["pending_requests"],pending_count=len(notifications["pending_requests"]),
+        expiring_warranties=notifications["expiring_warranties"],expiring_insurances=notifications["expiring_insurances"],
+        total_users=0,total_count=notifications["total_count"],open_maintenance=0,pending_approvals=0,recent_logs=[])
 
 def clean_input(value, is_int=False, is_date=False):
     if value is None or value.strip() == "":
@@ -1234,6 +1751,8 @@ def clean_input(value, is_int=False, is_date=False):
 def edit_asset(asset_id):
     conn = get_db_connection()
     cur = conn.cursor()
+
+    notifications = get_notifications()
 
     cur.execute("""
     SELECT a.*, 
@@ -1266,14 +1785,8 @@ def edit_asset(asset_id):
     cur.execute("SELECT * FROM warranty WHERE asset_id = %s", (asset_id,))
     warranty = cur.fetchone()
 
-    cur.execute("SELECT * FROM insurances WHERE asset_id = %s", (asset_id,))
-    insurance = cur.fetchone()
-
     cur.execute("SELECT * FROM vendors WHERE asset_id = %s", (asset_id,))
     vendor = cur.fetchone()
-
-    cur.execute("SELECT * FROM assignments WHERE asset_id = %s", (asset_id,))
-    assignment = cur.fetchone()
 
     cur.execute("SELECT * FROM files WHERE asset_id = %s", (asset_id,))
     files = cur.fetchone()
@@ -1299,72 +1812,30 @@ def edit_asset(asset_id):
         category_id = none_if_empty(request.form.get('category_id')) or none_if_empty(request.form.get('subcategory_id'))
         purchase_date = none_if_empty(request.form.get('purchase_date'))
         purchase_cost = parse_float(request.form.get('purchase_cost'))
-        tag = request.form['tag']
         remarks = none_if_empty(request.form.get('remarks'))
         parent_asset_id = none_if_empty(request.form.get('parent_asset_id'))
         warranty_years = parse_int(request.form.get('warranty_years'))
-
-        assigned_user_id = none_if_empty(request.form.get('assigned_user_id'))
-        assigned_from = none_if_empty(request.form.get('assigned_from'))
-        assigned_until = none_if_empty(request.form.get('assigned_until'))
-
-        policy_number = none_if_empty(request.form.get('policy_number'))
-        insurance_premium = none_if_empty(request.form.get('insurance_premium'))
-        provider_details = none_if_empty(request.form.get('provider_details'))
-        insured_value = parse_float(request.form.get('insured_value'))
-        start_date = none_if_empty(request.form.get('start_date'))
-        end_date = none_if_empty(request.form.get('end_date'))
-        provider_contact_raw = request.form.get('provider_contact')
-        try:
-            provider_contact = int(provider_contact_raw) if provider_contact_raw.strip() else None
-        except (ValueError, AttributeError):
-            provider_contact = None
-
-
         vendor_name = none_if_empty(request.form.get('vendor_name'))
         vendor_email = none_if_empty(request.form.get('vendor_email'))
         vendor_phone = none_if_empty(request.form.get('vendor_phone'))
         vendor_address = none_if_empty(request.form.get('vendor_address'))
-
+        subcategory_id = none_if_empty(request.form.get('subcategory_id'))
         now = datetime.now()
-
-        # Mark existing asset as inactive
+        category_to_save = subcategory_id
         cur.execute("UPDATE asset SET updated_at = %s WHERE id = %s", (now, asset_id))
 
-        # Update asset
         cur.execute("""
             UPDATE asset SET
                 asset_name=%s, description=%s, category_id=%s, purchase_date=%s,
-                purchase_cost=%s, updated_at=%s, tag=%s, remarks=%s, parent_asset_id=%s
+                purchase_cost=%s, updated_at=%s, remarks=%s, parent_asset_id=%s
             WHERE id=%s
-        """, (asset_name, description, category_id, purchase_date, purchase_cost,
-              now, tag, remarks, parent_asset_id, asset_id))
+        """, (asset_name, description, category_to_save, purchase_date, purchase_cost,
+              now,remarks, parent_asset_id, asset_id))
 
-        # Insert pending request for approval
-        cur.execute("""
-            INSERT INTO requests (request_type, requested_by, asset_id, status)
-            VALUES ('edit', %s, %s, 'Pending')
-        """, (current_user.id, asset_id))
-
-        # Warranty
         if warranty:
             cur.execute("UPDATE warranty SET years=%s, is_active=TRUE WHERE asset_id=%s", (warranty_years, asset_id))
         else:
             cur.execute("INSERT INTO warranty (asset_id, years, is_active) VALUES (%s, %s, TRUE)", (asset_id, warranty_years))
-
-        # Insurance
-        if insurance:
-            cur.execute("""UPDATE insurances SET policy_number=%s, provider_details=%s, insured_value=%s,
-            start_date=%s, end_date=%s, provider_contact=%s, is_active=TRUE, insurance_premium=%s WHERE asset_id=%s""", (policy_number, provider_details, insured_value,
-            start_date, end_date, provider_contact,insurance_premium, asset_id))
-        else:
-            cur.execute("""INSERT INTO insurances (
-            asset_id, policy_number, provider_details, insured_value,
-            start_date, end_date, provider_contact, is_active, insurance_premium)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-            """, (asset_id, policy_number, provider_details, insured_value,
-        start_date, end_date, provider_contact, True, insurance_premium))
-
 
         # Vendor
         if vendor:
@@ -1377,24 +1848,6 @@ def edit_asset(asset_id):
                 INSERT INTO vendors (name, email, phone, address, is_active, asset_id)
                 VALUES (%s, %s, %s, %s, TRUE, %s)
             """, (vendor_name, vendor_email, vendor_phone, vendor_address, asset_id))
-
-        # Assignment
-        # Assignment (Handle reassignment with history)
-        if assigned_user_id:
-            if assignment:
-        # Deactivate old assignment with unassigned_until date
-                cur.execute("""
-            UPDATE assignments
-            SET assigned_until = %s, is_active = FALSE
-            WHERE asset_id = %s AND is_active = TRUE
-            """, (assigned_from, asset_id))
-
-    # Insert new assignment
-            cur.execute("""
-        INSERT INTO assignments (asset_id, user_id, assigned_from, assigned_until, remarks, is_active)
-        VALUES (%s, %s, %s, %s, %s, TRUE)
-        """,(asset_id, assigned_user_id, assigned_from, assigned_until, remarks))
-
 
         upload_folder = os.path.join(app.root_path, 'static', 'uploads')
 
@@ -1437,9 +1890,10 @@ def edit_asset(asset_id):
         # asset is linked to a top-level category
             selected_category_id = category_id
 
-    return render_template('edit_asset.html', asset=asset, warranty=warranty, insurance=insurance,
-                           vendor=vendor, assignment=assignment, categories=categories, users=users, selected_category_id=selected_category_id,
-                           selected_subcategory_id=selected_subcategory_id, files=files)
+    return render_template('edit_asset.html', asset=asset, warranty=warranty, vendor=vendor, categories=categories, users=users, selected_category_id=selected_category_id,
+                           selected_subcategory_id=selected_subcategory_id, files=files, pending_requests=notifications["pending_requests"],pending_count=len(notifications["pending_requests"]),
+        expiring_warranties=notifications["expiring_warranties"],expiring_insurances=notifications["expiring_insurances"],
+        total_users=0,total_count=notifications["total_count"],open_maintenance=0,pending_approvals=0,recent_logs=[])
 
 UPLOAD_FOLDER = 'static/uploads'
 ALLOWED_EXTENSIONS = {'pdf', 'png', 'jpg', 'jpeg', 'docx'}
@@ -1477,6 +1931,8 @@ def add_asset():
     conn = get_db_connection()
     cur = conn.cursor()
 
+    notifications = get_notifications()
+
     # Get top-level categories (parent_id IS NULL)
     cur.execute("SELECT id, name FROM category WHERE parent_id IS NULL AND is_active = TRUE")
     categories = cur.fetchall()
@@ -1500,19 +1956,6 @@ def add_asset():
         remarks = none_if_empty(request.form.get('remarks'))
         parent_asset_id = none_if_empty(request.form.get('parent_asset_id'))
         warranty_years = none_if_empty(request.form.get('warranty_years'))
-
-        assigned_user_id = none_if_empty(request.form.get('assigned_user_id'))
-        assigned_from = none_if_empty(request.form.get('assigned_from'))
-        assigned_until = none_if_empty(request.form.get('assigned_until'))
-
-        policy_number = none_if_empty(request.form.get('policy_number'))
-        provider_details = none_if_empty(request.form.get('provider_details'))
-        insured_value = none_if_empty(request.form.get('insured_value'))
-        start_date = none_if_empty(request.form.get('start_date'))
-        end_date = none_if_empty(request.form.get('end_date'))
-        provider_contact = none_if_empty(request.form.get('provider_contact'))
-        insurance_premium = none_if_empty(request.form.get('insurance_premium'))
-
         vendor_name = none_if_empty(request.form.get('vendor_name'))
         vendor_email = none_if_empty(request.form.get('vendor_email'))
         vendor_phone = none_if_empty(request.form.get('vendor_phone'))
@@ -1563,7 +2006,7 @@ def add_asset():
         # Asset table
         cur.execute("""INSERT INTO asset (asset_name, description, category_id, purchase_date, purchase_cost, is_active, created_at, updated_at, tag, remarks, parent_asset_id
             ) VALUES (%s, %s, %s, %s, %s, FALSE, %s, %s, %s, %s, %s) RETURNING id
-            """, (asset_name, description, final_category_id, purchase_date, purchase_cost, now, now, tag, remarks, parent_asset_id))
+            """, (asset_name, description, final_category_id, purchase_date, purchase_cost, now, now, tag, remarks, None))
         asset_id = cur.fetchone()[0]
 
         # Request entry
@@ -1578,29 +2021,12 @@ def add_asset():
             VALUES (%s, %s, %s)
         """, (asset_id, warranty_years, True))
 
-        # Insurance
-        cur.execute("""
-            INSERT INTO insurances (
-                asset_id, policy_number,  provider_details , insured_value, start_date,
-                end_date, provider_contact, is_active, insurance_premium
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-        """, (asset_id, policy_number,  provider_details , insured_value, start_date, end_date, provider_contact, True , insurance_premium))
-
         # Vendor
         cur.execute("""
             INSERT INTO vendors (name, email, phone, address, is_active, asset_id)
             VALUES (%s, %s, %s, %s, TRUE, %s)
         """, (vendor_name, vendor_email, vendor_phone, vendor_address, asset_id))
 
-        # Assignment
-        if assigned_user_id:
-            cur.execute("""
-                INSERT INTO assignments (asset_id, user_id, assigned_from, assigned_until, remarks, is_active)
-                VALUES (%s, %s, %s, %s, %s, %s)
-            """, (asset_id, assigned_user_id, assigned_from, assigned_until, remarks, True))
-
-        # File upload
-        # Ensure upload folder exists
         upload_folder = os.path.join(app.root_path, 'static', 'uploads')
         os.makedirs(upload_folder, exist_ok=True)
 
@@ -1628,7 +2054,9 @@ def add_asset():
         flash("Asset submitted for approval.", "success")
         return redirect(url_for('view_assets'))
 
-    return render_template('add_asset.html', categories=categories, users=users, subcategories=subcategories)
+    return render_template('add_asset.html', categories=categories, users=users, subcategories=subcategories,pending_requests=notifications["pending_requests"],pending_count=len(notifications["pending_requests"]),
+        expiring_warranties=notifications["expiring_warranties"],expiring_insurances=notifications["expiring_insurances"],
+        total_users=0,total_count=notifications["total_count"],open_maintenance=0,pending_approvals=0,recent_logs=[])
 
 def none_if_empty(value):
     """
@@ -1642,60 +2070,292 @@ def none_if_empty(value):
     value = str(value).strip()
     return value if value != '' else None
 
+@app.route('/extend_assignment/<int:asset_id>', methods=['GET', 'POST'])
+@login_required
+def extend_assignment(asset_id):
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    notifications = get_notifications()
+
+    # 1. Get the latest active or pending assignment for this asset
+    cur.execute("""
+        SELECT id, user_id, assigned_from, assigned_until, remarks, is_active
+        FROM assignments
+        WHERE asset_id = %s
+        ORDER BY id DESC
+        LIMIT 1
+    """, (asset_id,))
+    previous = cur.fetchone()
+
+    previous_assignment_id = previous[0] if previous else None
+    previous_user_id = previous[1] if previous else None
+
+    # 2. Get all active users for dropdown
+    cur.execute("SELECT id, name FROM user_details WHERE is_active = TRUE")
+    users = cur.fetchall()
+
+    if request.method == 'POST':
+        if previous and previous[5]:  # previous[5] is is_active
+            prev_until = request.form.get('previous_assigned_until') or previous[3]
+            prev_remarks = request.form.get('previous_remarks') or previous[4]
+            cur.execute("""
+                UPDATE assignments
+                SET assigned_until=%s, remarks=%s
+                WHERE id=%s
+            """, (prev_until, prev_remarks, previous_assignment_id))
+
+        # Insert new assignment for a potentially new user
+        new_user_id = request.form.get('new_user_id') or previous_user_id
+        new_from = request.form.get('new_assigned_from')
+        new_until = request.form.get('new_assigned_until') or None
+        new_remarks = request.form.get('new_remarks') or None
+
+        cur.execute("""
+            INSERT INTO assignments (asset_id, user_id, assigned_from, assigned_until, remarks, is_active)
+            VALUES (%s, %s, %s, %s, %s, FALSE)
+            RETURNING id
+        """, (asset_id, new_user_id, new_from, new_until, new_remarks))
+        new_assignment_id = cur.fetchone()[0]
+
+        # Insert request for approval
+        cur.execute("""
+            INSERT INTO requests (request_type, requested_by, asset_id, assignment_id, status)
+            VALUES ('assignment', %s, %s, %s, 'Pending')
+        """, (current_user.id, asset_id, new_assignment_id))
+
+        conn.commit()
+        flash("Assignment extended successfully.", "success")
+        return redirect(url_for('view_assets'))
+
+    cur.close()
+    conn.close()
+
+    return render_template(
+        'extend_assignment.html',pending_requests=notifications["pending_requests"],pending_count=len(notifications["pending_requests"]),
+        expiring_warranties=notifications["expiring_warranties"],expiring_insurances=notifications["expiring_insurances"],
+        total_users=0,total_count=notifications["total_count"],open_maintenance=0,pending_approvals=0,recent_logs=[],
+        previous=previous,
+        users=users,
+        asset_id=asset_id
+    )
+
+@app.route('/add_insurance/<int:asset_id>', methods=['GET', 'POST'])
+@login_required
+def add_insurance(asset_id):
+    if not (current_user.has_role('Asset Manager') or current_user.has_role('Asset Entry Officer')):
+        return redirect(url_for('unauthorized'))
+
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    notifications = get_notifications()
+
+    now = datetime.now()
+
+    if request.method == 'POST':
+        policy_number = request.form['policy_number']
+        provider_details = request.form['provider_details']
+        provider_contact = request.form['provider_contact']
+        insured_value = request.form['insured_value']
+        premium = request.form['premium']
+        start_date = request.form['start_date']
+        end_date = request.form['end_date']
+
+        # Check if this asset already has insurance
+        cur.execute("SELECT COUNT(*) FROM insurances WHERE asset_id = %s", (asset_id,))
+        insurance_count = cur.fetchone()[0]
+
+        if insurance_count == 0:
+            # First time → Needs approval
+            cur.execute("""
+                INSERT INTO insurances 
+                    (asset_id, policy_number, provider_details, provider_contact, insured_value, insurance_premium, start_date, end_date, is_active)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s, FALSE)
+                RETURNING id
+            """, (asset_id, policy_number, provider_details, provider_contact, insured_value, premium, start_date, end_date))
+            insurance_id = cur.fetchone()[0]
+
+            # Create approval request
+            cur.execute("""
+                INSERT INTO requests (request_type, requested_by, asset_id, insurance_id, remarks, is_active)
+                VALUES ('insurance', %s, %s, %s, %s, TRUE)
+            """, (current_user.id, asset_id, insurance_id, f"First insurance request for asset {asset_id}"))
+
+            flash("First-time insurance request submitted for approval.", "info")
+        else:
+            # Not first time → Directly active (no approval)
+            cur.execute("""
+                INSERT INTO insurances 
+                    (asset_id, policy_number, provider_details, provider_contact, insured_value, insurance_premium, start_date, end_date, is_active, created_at)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s, TRUE,%s)
+            """, (asset_id, policy_number, provider_details, provider_contact, insured_value, premium, start_date, end_date, now))
+
+            flash("Insurance added successfully (no approval needed).", "success")
+
+        conn.commit()
+        cur.close()
+        conn.close()
+
+        return redirect(url_for('asset_details', asset_id=asset_id))
+
+    # If GET, fetch the latest active insurance (for renewal auto-fill)
+    cur.execute("""
+        SELECT policy_number, provider_details, provider_contact, insured_value, end_date
+        FROM insurances
+        WHERE asset_id = %s 
+        ORDER BY end_date DESC
+        LIMIT 1
+    """, (asset_id,))
+    last_insurance = cur.fetchone()
+
+    suggested_start = None
+    suggested_end = None
+    if last_insurance and last_insurance[4]:
+        last_end_date = last_insurance[4]
+        suggested_start = last_end_date + timedelta(days=1)
+        suggested_end = suggested_start + relativedelta(years=1)
+
+    cur.close()
+    conn.close()
+
+    return render_template(
+        'add_insurance.html',asset_id=asset_id,last_insurance=last_insurance,suggested_start=suggested_start,
+        suggested_end=suggested_end,pending_requests=notifications["pending_requests"],pending_count=len(notifications["pending_requests"]),
+        expiring_warranties=notifications["expiring_warranties"],expiring_insurances=notifications["expiring_insurances"],
+        total_users=0,total_count=notifications["total_count"],open_maintenance=0,pending_approvals=0,recent_logs=[]
+    )
+
+@app.route('/edit_insurance/<int:insurance_id>', methods=['GET', 'POST'])
+@login_required
+def edit_insurance(insurance_id):
+    if not (current_user.has_role('Asset Manager') or current_user.has_role('Asset Entry Officer')):
+        return redirect(url_for('unauthorized'))
+
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    notifications= get_notifications()
+
+    # Fetch current insurance record
+    cur.execute("""
+        SELECT id, asset_id, policy_number, provider_details, provider_contact,
+               insured_value, insurance_premium, start_date, end_date
+        FROM insurances
+        WHERE id = %s
+    """, (insurance_id,))
+    insurance = cur.fetchone()
+
+    if not insurance:
+        cur.close()
+        conn.close()
+        flash("Insurance record not found.", "danger")
+        return redirect(url_for('dashboard'))
+
+    if request.method == 'POST':
+        policy_number = request.form['policy_number']
+        provider_details = request.form['provider_details']
+        provider_contact = request.form['provider_contact']
+        insured_value = request.form['insured_value']
+        premium = request.form['premium']
+        start_date = request.form['start_date']
+        end_date = request.form['end_date']
+
+        # Update insurance record directly (no approval request)
+        cur.execute("""
+            UPDATE insurances
+            SET policy_number=%s,
+                provider_details=%s,
+                provider_contact=%s,
+                insured_value=%s,
+                insurance_premium=%s,
+                start_date=%s,
+                end_date=%s
+            WHERE id=%s
+        """, (policy_number, provider_details, provider_contact,
+              insured_value, premium, start_date, end_date, insurance_id))
+
+        conn.commit()
+        cur.close()
+        conn.close()
+
+        flash("Insurance updated successfully.", "success")
+        return redirect(url_for('asset_details', asset_id=insurance[1]))
+
+    cur.close()
+    conn.close()
+    return render_template("edit_insurance.html", insurance=insurance,pending_requests=notifications["pending_requests"],pending_count=len(notifications["pending_requests"]),
+        expiring_warranties=notifications["expiring_warranties"],expiring_insurances=notifications["expiring_insurances"],
+        total_users=0,total_count=notifications["total_count"],open_maintenance=0,pending_approvals=0,recent_logs=[])
+
+@app.route('/edit_assignment/<int:assignment_id>', methods=['GET', 'POST'])
+@login_required
+def edit_assignment(assignment_id):
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    notifications = get_notifications()
+
+    # Get the assignment details
+    cur.execute("""
+        SELECT asset_id, user_id, assigned_from, assigned_until, remarks 
+        FROM assignments 
+        WHERE id = %s
+    """, (assignment_id,))
+    assignment = cur.fetchone()
+
+    if not assignment:
+        flash("Assignment not found.", "danger")
+        return redirect(url_for('view_assets'))
+
+    # Get all active assets and users for dropdowns
+    cur.execute("SELECT id, asset_name FROM asset WHERE is_active = TRUE")
+    assets = cur.fetchall()
+    cur.execute("SELECT id, name FROM user_details WHERE is_active = TRUE")
+    users = cur.fetchall()
+
+    if request.method == 'POST':
+        asset_id = request.form.get('asset_id')
+        assigned_user_id = request.form.get('assigned_user_id')
+        assigned_from = request.form.get('assigned_from')
+        assigned_until = request.form.get('assigned_until') or None
+        assignment_remarks = request.form.get('assignment_remarks') or None
+
+        if asset_id and assigned_user_id:
+            # Directly update the existing assignment
+            cur.execute("""
+                UPDATE assignments
+                SET asset_id = %s,
+                    user_id = %s,
+                    assigned_from = %s,
+                    assigned_until = %s,
+                    remarks = %s
+                WHERE id = %s
+            """, (asset_id, assigned_user_id, assigned_from, assigned_until, assignment_remarks, assignment_id))
+
+            conn.commit()
+            flash("Assignment details updated successfully.", "success")
+            return redirect(url_for('view_assets'))
+
+    cur.close()
+    conn.close()
+
+    return render_template('edit_assignment.html', assignment=assignment, assets=assets, users=users,pending_requests=notifications["pending_requests"],pending_count=len(notifications["pending_requests"]),
+        expiring_warranties=notifications["expiring_warranties"],expiring_insurances=notifications["expiring_insurances"],
+        total_users=0,total_count=notifications["total_count"],open_maintenance=0,pending_approvals=0,recent_logs=[])
+
 @app.route('/add_maintenance', methods=['GET', 'POST'])
 @login_required
 def add_maintenance():
     conn = get_db_connection()
     cur = conn.cursor()
 
-    # Fetch active assets
+    notifications = get_notifications()
+
+    # Fetch assets and categories for dropdowns
     cur.execute("SELECT id, asset_name FROM asset WHERE is_active = TRUE")
     assets = cur.fetchall()
 
-    if request.method == 'POST':
-        asset_id = request.form['asset_id']
-        task_done = request.form['task_done']
-        maintenance_date = request.form['maintenance_date']
-        cost = request.form.get('cost')
-        service_by = request.form.get('service_by')
-        request_type = request.form.get('request_type')
-        has_parts = 'has_parts_involved' in request.form
-
-        # Insert maintenance as inactive
-        cur.execute("""
-            INSERT INTO maintenance (asset_id, task_done, maintenance_date, cost, service_by, has_parts_involved, is_active)
-            VALUES (%s, %s, %s, %s, %s, %s, TRUE)
-            RETURNING id
-        """, (asset_id, task_done, maintenance_date, cost, service_by, has_parts))
-        maintenance_id = cur.fetchone()[0]
-
-        # Create a request
-        cur.execute("""
-            INSERT INTO requests (request_type, requested_by, asset_id, status, is_active)
-            VALUES (%s, %s, %s, 'Pending', TRUE)
-        """, (request_type,current_user.id, asset_id))
-
-        conn.commit()
-        cur.close()
-        conn.close()
-
-        if has_parts:
-            return redirect(url_for('add_parts', parent_asset_id=asset_id))
-
-        flash('Maintenance request submitted for approval.', 'success')
-        return redirect(url_for('technician_dashboard'))
-
-    cur.close()
-    conn.close()
-    return render_template('add_maintenance_repair.html', assets=assets)
-
-@app.route('/add_parts', methods=['GET', 'POST'])
-@login_required
-def add_parts():
-    conn = get_db_connection()
-    cur = conn.cursor()
-
-    # Fetch dropdowns
     cur.execute("SELECT id, name FROM category WHERE parent_id IS NULL AND is_active = TRUE")
     categories = cur.fetchall()
 
@@ -1705,82 +2365,256 @@ def add_parts():
     cur.execute("SELECT id, name FROM user_details WHERE is_active = TRUE")
     users = cur.fetchall()
 
-    # Get parent_asset_id from URL query param if present
-    parent_asset_id = request.args.get('parent_asset_id')
-
-    def none_if_empty(value):
-        return None if value is None or str(value).strip() == '' else value
+    now = datetime.now()
 
     if request.method == 'POST':
-        asset_name = request.form['asset_name']
-        description = request.form['description']
-        category_id = none_if_empty(request.form.get('subcategory_id') or request.form.get('category_id'))
-        purchase_date = none_if_empty(request.form.get('purchase_date'))
-        purchase_cost = none_if_empty(request.form.get('purchase_cost'))
-        remarks = none_if_empty(request.form.get('remarks'))
-        parent_asset_id = none_if_empty(request.form.get('parent_asset_id')) or parent_asset_id
-        warranty_years = none_if_empty(request.form.get('warranty_years'))
-        vendor_name = none_if_empty(request.form.get('vendor_name'))
-        vendor_email = none_if_empty(request.form.get('vendor_email'))
-        vendor_phone = none_if_empty(request.form.get('vendor_phone'))
-        vendor_address = none_if_empty(request.form.get('vendor_address'))
+        # --- Maintenance data ---
+        asset_id = request.form['asset_id']
+        from_date = request.form['from_date']
+        to_date = request.form.get('to_date') or None
+        company = request.form.get('company') or None
+        serviced_by = request.form.get('serviced_by') or None
+        maintenance_type = request.form['maintenance_type']
+        cost = request.form.get('cost') or 0
+        remarks = request.form.get('remarks')
+        has_parts_involved = True if request.form.get('has_parts_involved') else False
 
+        part_id = None
         now = datetime.now()
-        is_active = False
 
-        cur.execute("""
-            SELECT tag FROM asset 
-            WHERE tag LIKE 'SVE-%' 
-            ORDER BY id DESC 
-            LIMIT 1
-        """)
-        last_tag_row = cur.fetchone()
-        next_number = int(last_tag_row[0].split('-')[1]) + 1 if last_tag_row else 1
-        tag = f"SVE-{next_number:06d}"
+        # --- Insert Part if involved ---
+        if has_parts_involved:
+            # Fetch part fields from form
+            part_name = request.form['part_name']
+            part_description = request.form.get('part_description')
+            part_subcategory_id = request.form.get('part_subcategory_id') or None
+            part_purchase_date = request.form.get('part_purchase_date') or None
+            part_purchase_cost = request.form.get('part_purchase_cost') or 0
+            part_remarks = request.form.get('part_remarks')
+            warranty_years = request.form.get('warranty_years')
+            vendor_name = request.form.get('vendor_name')
+            vendor_email = request.form.get('vendor_email')
+            vendor_phone = request.form.get('vendor_phone')
+            vendor_address = request.form.get('vendor_address')
 
+            # Generate unique tag
+            cur.execute("SELECT tag FROM asset WHERE tag LIKE 'SVE-%' ORDER BY id DESC LIMIT 1")
+            last_tag_row = cur.fetchone()
+            next_number = int(last_tag_row[0].split('-')[1]) + 1 if last_tag_row else 1
+            tag = f"SVE-{next_number:06d}"
+
+            # Insert part as a new asset
+            cur.execute("""
+                INSERT INTO asset (asset_name, description, category_id, purchase_date, purchase_cost,
+                                   is_active, created_at, updated_at, tag, remarks, parent_asset_id)
+                VALUES (%s,%s,%s,%s,%s,FALSE,%s,%s,%s,%s,%s)
+                RETURNING id
+            """, (
+                part_name, part_description, part_subcategory_id, part_purchase_date,
+                part_purchase_cost, now, now, tag, part_remarks, asset_id
+            ))
+            part_id = cur.fetchone()[0]
+
+            # Insert Vendor
+            if vendor_name:
+                cur.execute("""
+                    INSERT INTO vendors (name, email, phone, address, is_active, asset_id)
+                    VALUES (%s,%s,%s,%s,TRUE,%s)
+                """, (vendor_name, vendor_email, vendor_phone, vendor_address, part_id))
+
+            # Insert Warranty
+            if warranty_years:
+                cur.execute("""
+                    INSERT INTO warranty (asset_id, years, is_active)
+                    VALUES (%s,%s,TRUE)
+                """, (part_id, warranty_years))
+
+            # File upload
+            file = request.files.get('file')
+            if file and allowed_file(file.filename):
+                filename = secure_filename(file.filename)
+                upload_folder = os.path.join(app.root_path, 'static', 'uploads')
+                os.makedirs(upload_folder, exist_ok=True)
+                file_path = os.path.join(upload_folder, filename)
+                file.save(file_path)
+                file_db_path = f'uploads/{filename}'
+                cur.execute("""
+                    INSERT INTO files (asset_id, file_name, file_path, uploaded_by, uploaded_at, is_active)
+                    VALUES (%s,%s,%s,%s,%s,TRUE)
+                """, (part_id, filename, file_db_path, current_user.id, now))
+
+        # --- Insert Maintenance record ---
+        cur.execute("""INSERT INTO maintenance (asset_id, part_id, from_date, to_date, company, serviced_by,
+        has_parts_involved, cost, maintenance_type, remarks, is_active, created_at
+        ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,TRUE,%s) RETURNING id
+        """, (asset_id, part_id, from_date, to_date, company, serviced_by,has_parts_involved, cost, maintenance_type, remarks, now))
+        maintenance_id = cur.fetchone()[0]   # now it works
+
+
+        # --- Insert request for approval ---
         cur.execute("""
-            INSERT INTO asset (asset_name, description, category_id, purchase_date, purchase_cost, is_active,
-                               created_at, updated_at, tag, remarks, parent_asset_id)
-            VALUES (%s, %s, %s, %s, %s, TRUE, %s, %s, %s, %s, %s)
-            RETURNING id
-        """, (asset_name, description, category_id, purchase_date, purchase_cost, now, now, tag, remarks, parent_asset_id))
-        asset_id = cur.fetchone()[0]
+            INSERT INTO requests (request_type, requested_by, asset_id, maintenance_id, status)
+            VALUES ('maintenance', %s, %s, %s ,'Pending')
+        """, (current_user.id, asset_id, maintenance_id))
 
         cur.execute("""
             INSERT INTO requests (request_type, requested_by, asset_id, status)
-            VALUES ('add', %s, %s, 'Pending')
-        """, (current_user.id, asset_id))
-
-        cur.execute("""
-            INSERT INTO warranty (asset_id, years, is_active)
-            VALUES (%s, %s, %s)
-        """, (asset_id, warranty_years, True))
-
-        cur.execute("""
-            INSERT INTO vendors (name, email, phone, address, is_active, asset_id)
-            VALUES (%s, %s, %s, %s, TRUE, %s)
-        """, (vendor_name, vendor_email, vendor_phone, vendor_address, asset_id))
-
-        file = request.files.get('file')
-        if file and allowed_file(file.filename):
-            filename = secure_filename(file.filename)
-            upload_folder = os.path.join(app.root_path, 'static', 'uploads')
-            os.makedirs(upload_folder, exist_ok=True)
-            file_path = os.path.join(upload_folder, filename)
-            file.save(file_path)
-            file_db_path = f'uploads/{filename}'
-            cur.execute("""
-                INSERT INTO files (asset_id, file_name, file_path, uploaded_by, uploaded_at, is_active)
-                VALUES (%s, %s, %s, %s, %s, TRUE)
-            """, (asset_id, filename, file_db_path, current_user.id, now))
+            VALUES ('add', %s, %s ,'Pending')
+        """, (current_user.id, part_id))
 
         conn.commit()
         cur.close()
         conn.close()
-        flash("Part submitted for approval.", "success")
-        return redirect(url_for('technician_dashboard'))
 
-    return render_template('add_parts.html', categories=categories, users=users, subcategories=subcategories, parent_asset_id=parent_asset_id)
+        flash("Maintenance/Repair record added successfully!", "success")
+        return redirect(url_for('dashboard'))
+
+    return render_template('add_maintenance.html',assets=assets,categories=categories,subcategories=subcategories,
+        users=users,pending_requests=notifications["pending_requests"],pending_count=len(notifications["pending_requests"]),
+        expiring_warranties=notifications["expiring_warranties"],expiring_insurances=notifications["expiring_insurances"],
+        total_users=0,total_count=notifications["total_count"],open_maintenance=0,pending_approvals=0,recent_logs=[]
+        )
+
+@app.route('/add_monthly_maintenance/<int:asset_id>', methods=['GET', 'POST'])
+@login_required
+def add_monthly_maintenance(asset_id):
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    notifications = get_notifications()
+
+    now = datetime.now()
+
+    # Fetch active maintenance record
+    cur.execute("""
+        SELECT id
+        FROM maintenance
+        WHERE asset_id = %s AND maintenance_type = 'Maintenance' AND is_active = TRUE
+        LIMIT 1
+    """, (asset_id,))
+    row = cur.fetchone()
+    maintenance_id = row[0] if row else None
+
+    if maintenance_id is None:
+        flash("No active maintenance record found for this asset.", "danger")
+        return redirect(url_for('asset_detail', asset_id=asset_id))
+
+    # Fetch categories for parts dropdown if needed
+    cur.execute("SELECT id, name FROM category WHERE parent_id IS NULL AND is_active = TRUE")
+    categories = cur.fetchall()
+
+    cur.execute("SELECT id, name, parent_id FROM category WHERE parent_id IS NOT NULL AND is_active = TRUE")
+    subcategories = cur.fetchall()
+
+    if request.method == 'POST':
+        maintenance_date = request.form['maintenance_date']
+        remarks = request.form.get('remarks')
+        serviced_by = request.form['serviced_by']
+        has_parts_involved = bool(request.form.get('has_parts_involved'))
+
+        part_id = None
+        now = datetime.now()
+
+        # --- Insert part if involved ---
+        if has_parts_involved:
+            part_name = request.form.get('part_name')
+            part_description = request.form.get('part_description')
+            part_subcategory_id = request.form.get('part_subcategory_id')
+            part_purchase_date = request.form.get('part_purchase_date')
+            part_purchase_cost = request.form.get('part_purchase_cost') or 0
+            part_remarks = request.form.get('part_remarks')
+            warranty_years = request.form.get('warranty_years')
+            vendor_name = request.form.get('vendor_name')
+            vendor_email = request.form.get('vendor_email')
+            vendor_phone = request.form.get('vendor_phone')
+            vendor_address = request.form.get('vendor_address')
+
+            # Generate unique tag
+            cur.execute("SELECT tag FROM asset WHERE tag LIKE 'SVE-%' ORDER BY id DESC LIMIT 1")
+            last_tag_row = cur.fetchone()
+            next_number = int(last_tag_row[0].split('-')[1]) + 1 if last_tag_row else 1
+            tag = f"SVE-{next_number:06d}"
+
+            # Insert part
+            cur.execute("""
+                INSERT INTO asset (asset_name, description, category_id, purchase_date, purchase_cost,
+                                   is_active, created_at, updated_at, tag, remarks, parent_asset_id)
+                VALUES (%s,%s,%s,%s,%s,FALSE,%s,%s,%s,%s,%s)
+                RETURNING id
+            """, (
+                part_name, part_description, part_subcategory_id, part_purchase_date,
+                part_purchase_cost, now, now, tag, part_remarks, asset_id
+            ))
+            part_id = cur.fetchone()[0]
+
+            # Vendor and warranty
+            cur.execute("""
+                INSERT INTO vendors (name, email, phone, address, is_active, asset_id)
+                VALUES (%s,%s,%s,%s,TRUE,%s)
+            """, (vendor_name, vendor_email, vendor_phone, vendor_address, part_id))
+
+            if warranty_years:
+                cur.execute("""
+                    INSERT INTO warranty (asset_id, years, is_active)
+                    VALUES (%s,%s,TRUE)
+                """, (part_id, warranty_years))
+
+            # File upload
+            file = request.files.get('file')
+            if file and allowed_file(file.filename):
+                filename = secure_filename(file.filename)
+                upload_folder = os.path.join(app.root_path, 'static', 'uploads')
+                os.makedirs(upload_folder, exist_ok=True)
+                file_path = os.path.join(upload_folder, filename)
+                file.save(file_path)
+                file_db_path = f'uploads/{filename}'
+                cur.execute("""
+                    INSERT INTO files (asset_id, file_name, file_path, uploaded_by, uploaded_at, is_active)
+                    VALUES (%s,%s,%s,%s,%s,TRUE)
+                """, (part_id, filename, file_db_path, current_user.id, now))
+
+        # --- Insert monthly maintenance as inactive/pending ---
+        cur.execute("""
+            INSERT INTO monthly_maintenance (
+                maintenance_id, asset_id, part_id, maintenance_date,
+                remarks, serviced_by, has_parts_involved, is_active
+            ) VALUES (%s,%s,%s,%s,%s,%s,%s,FALSE)
+        """, (
+            maintenance_id, asset_id, part_id, maintenance_date,
+            remarks, serviced_by, has_parts_involved
+        ))
+
+        # --- Insert request for approval ---
+        cur.execute("""
+            INSERT INTO requests (request_type, requested_by, asset_id, status,created_at)
+            VALUES ('maintenance', %s, %s, 'Pending',%s)
+        """, (current_user.id, asset_id,now))
+
+        cur.execute("""
+            INSERT INTO requests (request_type, requested_by, asset_id, status)
+            VALUES ('add', %s, %s ,'Pending')
+        """, (current_user.id, part_id))
+
+        conn.commit()
+        cur.close()
+        conn.close()
+
+        flash("Monthly Maintenance added successfully and pending approval!", "success")
+        return redirect(url_for('asset_details', asset_id=asset_id))
+
+    cur.close()
+    conn.close()
+    return render_template('add_monthly_maintenance.html',
+                           asset_id=asset_id, row=row,
+                           categories=categories,pending_requests=notifications["pending_requests"],
+        pending_count=len(notifications["pending_requests"]),
+        expiring_warranties=notifications["expiring_warranties"],
+        expiring_insurances=notifications["expiring_insurances"],
+        total_users=0,
+        total_count=notifications["total_count"],
+        open_maintenance=0,
+        pending_approvals=0,
+        recent_logs=[],subcategories=subcategories)
 
 @app.route('/')
 def index():

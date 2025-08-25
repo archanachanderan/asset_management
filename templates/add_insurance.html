@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Requests</title>
+<title>Add Insurance</title>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css" rel="stylesheet">
@@ -78,7 +78,7 @@
       opacity: 0;
       transform: translateY(-10px);
       overflow-y: auto;
-      height: 500px;
+      height: 100px;
     }
     .custom-dropdown.active {
       display: block;
@@ -101,21 +101,6 @@
       flex: 1 1 calc(19% - 1.5rem);
       min-width: 200px;
     }
-    table {
-      max-width: 1000px;
-      margin-bottom: 20px;
-    }
-    th, td {
-      padding: 5px;
-      text-align: left;
-    }
-    th {
-      background-color: #f2f2f2;
-    }
-    th:hover {
-  background-color: grey; /* Light grey background on hover */
-  cursor: pointer; /* Shows a pointer cursor to indicate it's clickable */
-}
 </style>
 </head>
 <body>
@@ -149,26 +134,17 @@
       <img src="{{ url_for('static', filename='images/logo.jpg') }}" alt="Logo" height="40" class="me-2">
       <span class="fw-bold fs-3 text-danger" style="font-family: 'Times New Roman', Times, serif;">SREE VENKATESHWARA ENTERPRISES</span>
     </div>
-    <div class="d-flex align-items-center justify-content-end me-3">
-  <!-- Search box -->
-  <div class="me-2">
-    <div class="input-group" style="max-width: 450px;"><span class="input-group-text text-dark"><i class="fas fa-search"></i></span>
-    <input type="text" id="assetSearch" class="form-control form-control" placeholder="Search assets...">
+    <div class="ms-auto position-relative me-3">
+      <button id="notifBtn" class="btn btn-light position-relative">
+        <i class="fas fa-bell fs-4"></i>
+        {% if total_count > 0 %}
+          <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+            {{ total_count }}
+          </span>
+        {% endif %}
+      </button>
     </div>
   </div>
-
-  <!-- Notification bell -->
-  <div>
-    <button id="notifBtn" class="btn btn-light position-relative">
-      <i class="fas fa-bell fs-4"></i>
-      {% if total_count > 0 %}
-        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
-          {{ total_count }}
-        </span>
-      {% endif %}
-    </button>
-  </div>
-</div>
 </nav>
 
   <div id="notifDropdown" class="custom-dropdown">
@@ -204,7 +180,7 @@
     {% endif %}
   </div>
 
-  {% with messages = get_flashed_messages(with_categories=true) %}
+{% with messages = get_flashed_messages(with_categories=true) %}
   {% if messages %}
     {% for category, message in messages %}
       <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
@@ -215,94 +191,112 @@
   {% endif %}
 {% endwith %}
 
-  <!-- Main Content -->
-  <div class="content mt-5 pt-5 p-5">
-    <h1 class="mb-0 fw-bold display-5" style="padding-left: 50px;">All Requests</h1>
+<div class="container p-5 border rounded" style="margin-top:100px; max-width:600px; background:#f9f9f9;">
+  <h4 class="mb-3 text-center">Add Insurance</h4>
 
-    <div class="table-responsive py-5 mx-auto w-75">
-      <table class="table table-hover align-middle shadow" id="assetTable">
-        <thead class="table-primary">
-          <tr>
-            <th>Request ID</th>
-            <th>Asset Name</th>
-            <th>Type</th>
-            <th>Requested By</th>
-            <th>Requested Date</th>
-            <th>Status</th>
-          </tr>
-        </thead>
-        <tbody>
-        {% for r in requests %}
-          <tr onclick="window.location='{{ url_for('approve_request_page', request_id=r.id) }}';" style="cursor:pointer;">
-            <td>{{ r.id }}</td>
-            <td>{{ r.asset_name }}</td>
-            <td>{{ r.request_type }}</td>
-            <td>{{ r.requested_by }}</td>
-            <td>{{ r.request_date.strftime("%Y-%m-%d") }}</td>
-            <td>{{ r.status }}</td>
-        {% endfor %}
-        </tbody>
-      </table>
+  <form method="POST">
+    <div class="mb-2 d-flex justify-content-between align-items-center">
+      <label class="fw-semibold mb-0" style="width:40%;">Policy Number</label>
+      <input type="text" name="policy_number" class="form-control form-control-sm" 
+             style="width:58%;" value="{{ last_insurance[0] if last_insurance else '' }}">
     </div>
-  </div>
 
-  <!-- Scripts -->
+    <div class="mb-2 d-flex justify-content-between align-items-center">
+      <label class="fw-semibold mb-0" style="width:40%;">Provider Details</label>
+      <input type="text" name="provider_details" class="form-control form-control-sm" 
+             style="width:58%;" value="{{ last_insurance[1] if last_insurance else '' }}">
+    </div>
+
+    <div class="mb-2 d-flex justify-content-between align-items-center">
+      <label class="fw-semibold mb-0" style="width:40%;">Provider Contact</label>
+      <input type="text" name="provider_contact" class="form-control form-control-sm" 
+             style="width:58%;" value="{{ last_insurance[2] if last_insurance else '' }}">
+    </div>
+
+    <div class="mb-2 d-flex justify-content-between align-items-center">
+      <label class="fw-semibold mb-0" style="width:40%;">Insured Value</label>
+      <input type="number" name="insured_value" class="form-control form-control-sm" 
+             style="width:58%;" value="{{ last_insurance[3] if last_insurance else '' }}">
+    </div>
+
+    <div class="mb-2 d-flex justify-content-between align-items-center">
+      <label class="fw-semibold mb-0" style="width:40%;">Premium</label>
+      <input type="number" step="1000" name="premium" class="form-control form-control-sm" 
+             style="width:58%;">
+    </div>
+
+    <div class="mb-2 d-flex justify-content-between align-items-center">
+      <label class="fw-semibold mb-0" style="width:40%;">Start Date</label>
+      <input type="date" name="start_date" class="form-control form-control-sm" 
+             style="width:58%;" value="{{ suggested_start.strftime('%Y-%m-%d') if suggested_start else '' }}">
+    </div>
+
+    <div class="mb-3 d-flex justify-content-between align-items-center">
+      <label class="fw-semibold mb-0" style="width:40%;">End Date</label>
+      <input type="date" name="end_date" class="form-control form-control-sm" 
+             style="width:58%;" value="{{ suggested_end.strftime('%Y-%m-%d') if suggested_end else '' }}">
+    </div>
+
+      <button type="submit" class="btn btn-danger">Submit</button>
+      <a href="{{ url_for('asset_details', asset_id=asset_id) }}" class="btn btn-danger">Cancel</a>
+    </div>
+  </form>
+</div>
+
+<!-- Scripts -->
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <script>
+    const notifBtn = document.getElementById('notifBtn');
+    const notifDropdown = document.getElementById('notifDropdown');
 
-    // Search filter
-    document.getElementById('requestSearch').addEventListener('keyup', function() {
-      const searchValue = this.value.toLowerCase();
-      const rows = document.querySelectorAll('#requestTable tbody tr');
-
-      rows.forEach(row => {
-        const text = row.textContent.toLowerCase();
-        row.style.display = text.includes(searchValue) ? '' : 'none';
-      });
+    notifBtn.addEventListener('click', function() {
+      notifDropdown.classList.toggle('active');
     });
 
-    document.getElementById('assetSearch').addEventListener('keyup', function() {
-      const searchValue = this.value.toLowerCase();
-      const rows = document.querySelectorAll('#assetTable tbody tr');
-
-      rows.forEach(row => {
-        const cells = row.getElementsByTagName('td');
-        let match = false;
-
-        for (let i = 0; i < cells.length; i++) {
-          if (cells[i].innerText.toLowerCase().includes(searchValue)) {
-            match = true;
-            break;
-          }
-        }
-        row.style.display = (searchValue === '' || match) ? '' : 'none';
-      });
+    // Close dropdown if clicking elsewhere
+    document.addEventListener('click', function(e) {
+      if (!notifBtn.contains(e.target) && !notifDropdown.contains(e.target)) {
+        notifDropdown.classList.remove('active');
+      }
     });
+  </script>  
+<script>
+  function toggleSidebar() {
+    const sidebar = document.querySelector('.sidebar');
+    sidebar.classList.toggle('active');
+  }
+  function resizeIframe(iframe) {
+    try {
+      const contentHeight = iframe.contentWindow.document.body.scrollHeight;
+      iframe.style.height = contentHeight + "px";
+    } catch (e) {
+      console.warn("Iframe content could not be resized:", e);
+    }
+  }
 
-    // Move Pending rows on top
-    document.addEventListener("DOMContentLoaded", function() {
-      const tbody = document.querySelector("#requestTable tbody");
-      const rows = Array.from(tbody.querySelectorAll("tr"));
-      rows.sort((a, b) => {
-        const statusA = a.cells[5].innerText.trim().toLowerCase();
-        const statusB = b.cells[5].innerText.trim().toLowerCase();
-        return (statusA === "pending" ? -1 : 1) - (statusB === "pending" ? -1 : 1);
-      });
-      rows.forEach(row => tbody.appendChild(row));
+  document.addEventListener("DOMContentLoaded", () => {
+    document.querySelectorAll("iframe").forEach(iframe => {
+      iframe.addEventListener("load", () => resizeIframe(iframe));
     });
-  </script>
-  <script>
+  });
+</script>
+<script>
   function toggleSidebar() {
     const sidebar = document.querySelector('.sidebar');
     sidebar.classList.toggle('active');
   }
 </script>
-
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-  <!-- AOS Animation Library -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.js"></script>
-  <script>
-    AOS.init({ once: true, duration: 2000 });
-  </script>
+<!-- AOS Animation Library -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.js"></script>
+<script>
+  AOS.init({
+    once: true, // Animate only once per element
+    duration: 2000 // Optional: animation duration
+  });
+</script>
 <!-- Scripts -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -326,72 +320,5 @@
     }
   });
 </script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script>
-    document.getElementById('assetSearch').addEventListener('keyup', function() {
-      const searchValue = this.value.toLowerCase();
-      const rows = document.querySelectorAll('#assetTable tbody tr');
-
-      rows.forEach(row => {
-        const cells = row.getElementsByTagName('td');
-        let match = false;
-
-        for (let i = 0; i < cells.length; i++) {
-          if (cells[i].innerText.toLowerCase().includes(searchValue)) {
-            match = true;
-            break;
-          }
-        }
-        row.style.display = (searchValue === '' || match) ? '' : 'none';
-      });
-    });
-
-    function toggleSidebar() {
-      document.querySelector('.sidebar').classList.toggle('active');
-    }
-
-    function resizeIframe(iframe) {
-      try {
-        const contentHeight = iframe.contentWindow.document.body.scrollHeight;
-        iframe.style.height = contentHeight + "px";
-      } catch (e) {
-        console.warn("Iframe content could not be resized:", e);
-      }
-    }
-
-    document.addEventListener("DOMContentLoaded", () => {
-      document.querySelectorAll("iframe").forEach(iframe => {
-        iframe.addEventListener("load", () => resizeIframe(iframe));
-      });
-    });
-  </script>
-  <script>
-    AOS.init({
-      once: true,
-      duration: 2000
-    });
-</script>
-<script>
-  const table = document.getElementById('assetTable');
-  const headers = table.querySelectorAll('th');
-
-  headers.forEach((header, index) => {
-    header.addEventListener('click', () => {
-      const rows = Array.from(table.tBodies[0].rows);
-      const sortedRows = rows.sort((a, b) => {
-        const aText = a.cells[index].textContent.trim();
-        const bText = b.cells[index].textContent.trim();
-        return aText.localeCompare(bText, undefined, {numeric: true});
-      });
-      // Clear table body and append sorted rows
-      rows.forEach(row => table.tBodies[0].removeChild(row));
-      sortedRows.forEach(row => table.tBodies[0].appendChild(row));
-    });
-  });
-</script>
 </body>
 </html>
-

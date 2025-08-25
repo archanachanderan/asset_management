@@ -1,177 +1,277 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>View Users</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.css" rel="stylesheet" />
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Users</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
-    .sidebar {
-      position: fixed;
-      top: 80px; /* below navbar */
-      left: -250px; /* hidden off-screen */
-      width: 250px;
-      height: 100%;
-      background: #fff;
-      box-shadow: 2px 0 5px rgba(0,0,0,0.1);
-      transition: left 0.3s ease;
-      z-index: 1000;
-      padding-top: 10px;
-      padding-left: 5px;
-    }
-    .sidebar.active {
-      left: 0;
-    }
-    .sidebar a {
-      display: block;
-      padding: 15px 20px;
-      color: #dc3545;
-      text-decoration: none;
-    }
-    .sidebar a:hover {
-      background: #f5f5f5;
-    }
-    .sidebar-overlay {
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    width: 80px;
+    background: #fff;
+    box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+    transition: width 0.3s;
+    overflow: hidden;
+    z-index: 1000;
+  }
+  .sidebar.expanded { width: 250px; }
+  .sidebar .nav-link {
+    display: flex;
+    align-items: center;
+    padding: 15px;
+    color: #dc3545;
+    white-space: nowrap;
+    position: relative;
+  }
+  .sidebar .nav-link i { min-width: 30px; font-size: 1.2rem; }
+  .sidebar .nav-link span { margin-left: 10px; transition: opacity 0.3s; opacity: 0; }
+  .sidebar.expanded .nav-link span { opacity: 1; }
+  .sidebar .nav-link:hover { background: #f5f5f5; border-radius: 8px; }
+
+  .sidebar.expanded #user-email { display: block !important; }
+
+  /* Navbar */
+  .navbar { margin-left: 80px; transition: margin-left 0.3s; }
+  .sidebar.expanded ~ .navbar { margin-left: 250px; }
+
+  /* Content */
+  .content { margin-left: 50px; padding: 20px; transition: margin-left 0.3s; margin-right: 0;}
+  .sidebar.expanded ~ .content { margin-left: 250px; }
+
+  /* Hamburger */
+  .hamburger { font-size: 1.5rem; cursor: pointer; }
+
+  /* Cards */
+  .card { border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+
+    /* Notifications */
+  .notification-badge {
+    position: absolute;
+    top: 0;
+    right: -5px;
+    font-size: 0.6rem;
+    background: red;
+    color: #fff;
+    border-radius: 50%;
+    padding: 2px 5px;
+  }
+  .custom-dropdown {
       display: none;
       position: fixed;
-      top: 60px;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0,0,0,0.4);
-      z-index: 999;
+      top: 70px; /* just below navbar */
+      right: 20px;
+      z-index: 2000;
+      background: white;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+      min-width: 250px;
+      transition: all 0.3s ease;
+      opacity: 0;
+      transform: translateY(-10px);
+      overflow-y: auto;
+      height: 500px;
     }
-    .sidebar-overlay.active {
+    .custom-dropdown.active {
       display: block;
+      opacity: 1;
+      transform: translateY(0);
     }
-   
-  </style>
+    .custom-dropdown a {
+      display: block;
+      padding: 10px;
+      color: #333;
+      text-decoration: none;
+    }
+    .custom-dropdown a:hover {
+      background: #f5f5f5;
+    }
+    body {
+      background: white;
+    }
+    .flex-card {
+      flex: 1 1 calc(19% - 1.5rem);
+      min-width: 200px;
+    }
+    table {
+      max-width: 1000px;
+      margin-bottom: 20px;
+    }
+    th, td {
+      padding: 5px;
+      text-align: left;
+    }
+    th {
+      background-color: #f2f2f2;
+    }
+    th:hover {
+  background-color: grey; /* Light grey background on hover */
+  cursor: pointer; /* Shows a pointer cursor to indicate it's clickable */
+}
+</style>
 </head>
+<body>
 
-<body class="bg-light">
-  <!-- Navbar -->
-  <header>
-    <nav class="navbar navbar-expand-lg navbar-light bg-white fixed-top shadow py-2">
-      <div class="container-fluid">
-        <p class="navbar-brand text-danger fw-bold fs-2 my-0 d-flex align-items-center" style="font-family: 'Times New Roman', Times, serif;">
-          <button class="btn btn-light me-3" id="sidebarToggleBtn"><i class="fas fa-bars"></i></button>
-          <img src="{{ url_for('static', filename='images/logo.jpg') }}" alt="Logo" height="40" class="me-2">
-          SREE VENKATESHWARA ENTERPRISES
-        </p>
-        <div class="d-flex align-items-center">
-          
-          {% if session.email %}
-            <div class="ms-3 d-flex align-items-center">
-              <i class="bi bi-person-circle fs-4 me-2"></i>
-              <span class="fw-bold">{{ session.email }}</span>
-            </div>
-          {% endif %}
-        </div>
-      </div>
-    </nav>
-  </header>
-
-  <!-- Sidebar -->
-  <div class="sidebar">
-    {% if session.role == 'Super Admin' %}
-      <h4 class="text-center fw-bold display-5 text-danger d-block py-2">Admin</h4>
-      <a href="{{ url_for('admin_dashboard') }}" class="text-danger d-block py-2">Dashboard</a>
-    {% endif %}
-    {% if session.role == 'Asset Manager' %}
-      <h4 class="text-center fw-bold display-5 text-danger d-block py-2">Manager</h4>
-      <a href="{{ url_for('manager_dashboard') }}" class="text-danger d-block py-2">Dashboard</a>
-      <a href="{{ url_for('view_requests') }}" class="text-danger d-block py-2">View Requests</a>
-      <a href="{{ url_for('view_messages') }}" class="text-danger d-block py-2">View Messages</a>
-    {% endif %}
-    {% if session.role == 'Asset Entry Officer' %}
-      <h4 class="text-align fw-bold fs-1 text-danger d-block py-2">Asset Entry Officer</h4>
-      <a href="{{ url_for('assetentryofficer_dashboard') }}" class="text-danger d-block py-2">Dashboard</a>
-    {% endif %}
-    <a href="{{ url_for('view_users') }}" class="text-danger d-block py-2">View Users</a>
-    <a href="{{ url_for('view_assets') }}" class="text-danger d-block py-2">View Asset</a>
-    {% if session.role == 'Super Admin' %}
-    <a href="{{ url_for('view_messages') }}" class="text-danger d-block py-2">View Messages</a>      
-    {% endif %}
-    <a href="{{ url_for('change_password') }}" class="text-danger d-block py-2">Change Password</a>
-    <a href="{{ url_for('logout') }}" class="text-danger d-block py-2">Logout</a>
+<div class="sidebar" id="sidebar">
+  <div class="text-center py-3">
+    <i class="fas fa-user-circle fs-2"></i>
+    <div id="user-email" class="small mt-2" style="display:none;">
+      {% if session.email %}
+        <span class="fw-bold">{{ session.email }}</span>
+      {% else %}
+        <span class="fw-bold">John Doe</span>
+      {% endif %}
+    </div>
   </div>
 
-  <div class="content mt-5 pt-5">
-    <!-- Heading + Search -->
-    <div class="d-flex justify-content-between align-items-center mb-3">
-      <h2 class="mb-0">All Users</h2>
-      <input type="text" id="userSearch" class="form-control" placeholder="Search..." style="max-width: 300px;">
-    </div>
+  <a href="{{ url_for('dashboard') }}" class="nav-link" data-bs-toggle="tooltip" title="Dashboard"><i class="fas fa-home"></i><span>Dashboard</span></a>
+  {% if session.role == 'Asset Manager' or session.role == 'Super Admin' %}
+  <a href="{{ url_for('view_users') }}" class="nav-link" data-bs-toggle="tooltip" title="Users"><i class="fas fa-users"></i><span>Users</span></a>
+  {% endif %}
+  <a href="{{ url_for('view_assets') }}" class="nav-link" data-bs-toggle="tooltip" title="Assets"><i class="fas fa-boxes"></i><span>Assets</span></a>
+  <a href="{{ url_for('view_messages') }}" class="nav-link" data-bs-toggle="tooltip" title="Messages"><i class="fas fa-envelope"></i><span>Messages</span></a>
+  <a href="{{ url_for('change_password') }}" class="nav-link" data-bs-toggle="tooltip" title="Change Password"><i class="fas fa-key"></i><span>Change Password</span></a>
+  <a href="{{ url_for('logout') }}" class="nav-link" data-bs-toggle="tooltip" title="Logout"><i class="fas fa-sign-out-alt"></i><span>Logout</span></a>
+</div>
 
-    <div class="row">
-      {% for user in users %}
-      <div class="col-md-4 mb-5 user-card">
-        <div class="card shadow-sm h-100 py-5" style="cursor: pointer; min-height: 130px;" onclick="location.href='{{ url_for('user_detail', user_id=user[0]) }}'">
-          <div class="card-body d-flex justify-content-between align-items-center">
-            <div>
-              <h3 class="card-title">{{ user[2] }}</h3>
-              <p class="card-title">{{ user[3] }}</p>
-              <p class="card-text">{{ user[4] }}</p>
-            </div>
-            <div class="text-end">
-              <i class="fas fa-user fa-5x text-primary"></i>
-            </div>
-          </div>
-        </div>
-      </div>
+<nav class="navbar navbar-expand-lg navbar-light bg-white shadow fixed-top">
+  <div class="container-fluid d-flex align-items-center">
+    <div class="d-flex align-items-center">
+      <span class="hamburger me-3" id="hamburgerBtn"><i class="fas fa-bars"></i></span>
+      <img src="{{ url_for('static', filename='images/logo.jpg') }}" alt="Logo" height="40" class="me-2">
+      <span class="fw-bold fs-3 text-danger" style="font-family: 'Times New Roman', Times, serif;">SREE VENKATESHWARA ENTERPRISES</span>
+    </div>
+    <div class="d-flex align-items-center justify-content-end me-3">
+  <!-- Search box -->
+  <div class="me-2">
+    <div class="input-group" style="max-width: 450px;"><span class="input-group-text text-dark"><i class="fas fa-search"></i></span>
+    <input type="text" id="assetSearch" class="form-control form-control" placeholder="Search assets...">
+    </div>
+  </div>
+
+  <!-- Notification bell -->
+  <div>
+    <button id="notifBtn" class="btn btn-light position-relative">
+      <i class="fas fa-bell fs-4"></i>
+      {% if total_count > 0 %}
+        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+          {{ total_count }}
+        </span>
+      {% endif %}
+    </button>
+  </div>
+</div>
+</nav>
+
+  <div id="notifDropdown" class="custom-dropdown">
+    {% if session.role == 'Asset Manager' %}
+    {% if pending_requests %}
+      {% for req in pending_requests %}
+        <a href="{{ url_for('approve_request_page', request_id=req.id) }}">
+          Request to {{ req.request_type }} by {{ req.request_by }}
+        </a>
       {% endfor %}
-    </div>
-
-    {% if session.role == 'Asset Manager' %}
-      <a href="{{ url_for('add_user') }}" class="btn btn-danger mt-3">Add Users</a>
+    {% endif %}
+    {% endif %}
+    {% if expiring_warranties %}
+      <hr class="my-1">
+      {% for warranty in expiring_warranties %}
+        <a href="#">Warranty expiring for {{ warranty.asset_name }} on {{ warranty.expiry_date }}</a>
+      {% endfor %}
+    {% endif %}
+    {% if expiring_insurances %}
+      <hr class="my-1">
+      {% for insurance in expiring_insurances %}
+        <a href="#">Insurance expiring for {{ insurance.asset_name }} on {{ insurance.expiry_date }}</a>
+      {% endfor %}
+    {% endif %}
+    {% if not pending_requests and not expiring_warranties and not expiring_insurances %}
+      <span class="d-block p-2 text-muted">No notifications</span>
+    {% else %}
+      <hr class="my-1">
+      {% if session.role == 'Asset Manager' %}
+      <a href="{{ url_for('view_requests') }}" class="text-primary">View All Pending Requests</a>
+      {% endif %}
+      <a href="{{ url_for('view_notifications') }}" class="text-primary">View All Notifications</a>
     {% endif %}
   </div>
 
-  <!-- Scripts -->
-   <script>
-  function toggleSidebar() {
-    const sidebar = document.querySelector('.sidebar');
-    sidebar.classList.toggle('active');
-  }
-</script>
+  {% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    {% for category, message in messages %}
+      <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+    {% endfor %}
+  {% endif %}
+{% endwith %}
 
+  <!-- Content -->
+  <div class="content mt-5 pt-5 p-5">
+    <h1 class="mb-0 fw-bold display-5" style="padding-left: 50px;">All Users</h2>
+
+  <div class="table-responsive py-5 mx-auto w-75">
+  <table class="table table-hover align-middle shadow text-center"  id="assetTable">
+    <thead class="table-primary">
+      <tr>
+        <th>Name</th>
+        <th>Role</th>
+        <th>Last Login</th>
+        <th>Date Of Joining</th>
+        <th>Phone</th>
+        <th>Is Active</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for user in users %}
+      <tr onclick="location.href='{{ url_for('user_detail', user_id=user[0]) }}'">
+        <td>{{ user[2] }}</td>
+        <td>{{ user[3] }}</td>
+        <td>{{ user[4] }}</td>
+        <td>{{ user[5] }}</td>
+        <td>{{ user[6] }}</td>
+        <td>{{ user[7] }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script>
-    // Sidebar toggle
-    const sidebar = document.querySelector('.sidebar');
-    const sidebarToggleBtn = document.getElementById('sidebarToggleBtn');
-    const sidebarOverlay = document.getElementById('sidebarOverlay');
-
-    sidebarToggleBtn.addEventListener('click', () => {
-      sidebar.classList.toggle('active');
-      sidebarOverlay.classList.toggle('active');
-    });
-    sidebarOverlay.addEventListener('click', () => {
-      sidebar.classList.remove('active');
-      sidebarOverlay.classList.remove('active');
-    });
-    function toggleSidebar() {
-      sidebar.classList.toggle('active');
-    }
-    function toggleSidebar() {
-      const sidebar = document.querySelector('.sidebar');
-      sidebar.classList.toggle('active');
-    }
-
-    // Search filter
-    document.getElementById('userSearch').addEventListener('keyup', function() {
+    document.getElementById('assetSearch').addEventListener('keyup', function() {
       const searchValue = this.value.toLowerCase();
-      const cards = document.querySelectorAll('.user-card');
-      
-      cards.forEach(card => {
-        const text = card.textContent.toLowerCase();
-        card.style.display = text.includes(searchValue) ? '' : 'none';
+      const rows = document.querySelectorAll('#assetTable tbody tr');
+
+      rows.forEach(row => {
+        const cells = row.getElementsByTagName('td');
+        let match = false;
+
+        for (let i = 0; i < cells.length; i++) {
+          if (cells[i].innerText.toLowerCase().includes(searchValue)) {
+            match = true;
+            break;
+          }
+        }
+        row.style.display = (searchValue === '' || match) ? '' : 'none';
       });
     });
+
+    function toggleSidebar() {
+      document.querySelector('.sidebar').classList.toggle('active');
+    }
 
     function resizeIframe(iframe) {
       try {
@@ -188,14 +288,48 @@
       });
     });
   </script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-  <!-- AOS Animation Library -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.js"></script>
   <script>
     AOS.init({
       once: true,
       duration: 2000
     });
-  </script>
+
+  // Sidebar Toggle
+  const sidebar = document.getElementById('sidebar');
+  const hamburger = document.getElementById('hamburgerBtn');
+  hamburger.addEventListener('click', () => {
+    sidebar.classList.toggle('expanded');
+  });
+
+  // Notifications Toggle
+  notifBtn.addEventListener('click', function(e) {
+    e.stopPropagation();
+    notifDropdown.classList.toggle('active');
+  });
+
+  document.addEventListener('click', function(e) {
+    if (!notifBtn.contains(e.target) && !notifDropdown.contains(e.target)) {
+      notifDropdown.classList.remove('active');
+    }
+  });
+</script>
+<script>
+  const table = document.getElementById('assetTable');
+  const headers = table.querySelectorAll('th');
+
+  headers.forEach((header, index) => {
+    header.addEventListener('click', () => {
+      const rows = Array.from(table.tBodies[0].rows);
+      const sortedRows = rows.sort((a, b) => {
+        const aText = a.cells[index].textContent.trim();
+        const bText = b.cells[index].textContent.trim();
+        return aText.localeCompare(bText, undefined, {numeric: true});
+      });
+      // Clear table body and append sorted rows
+      rows.forEach(row => table.tBodies[0].removeChild(row));
+      sortedRows.forEach(row => table.tBodies[0].appendChild(row));
+    });
+  });
+</script>
 </body>
 </html>

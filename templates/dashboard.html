@@ -1,0 +1,1296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    width: 80px;
+    background: #fff;
+    box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+    transition: width 0.3s;
+    overflow: hidden;
+    z-index: 1000;
+  }
+  .sidebar.expanded { width: 250px; }
+  .sidebar .nav-link {
+    display: flex;
+    align-items: center;
+    padding: 15px;
+    color: #dc3545;
+    white-space: nowrap;
+    position: relative;
+  }
+  .sidebar .nav-link i { min-width: 30px; font-size: 1.2rem; }
+  .sidebar .nav-link span { margin-left: 10px; transition: opacity 0.3s; opacity: 0; }
+  .sidebar.expanded .nav-link span { opacity: 1; }
+  .sidebar .nav-link:hover { background: #f5f5f5; border-radius: 8px; }
+
+  .sidebar.expanded #user-email { display: block !important; }
+
+  /* Navbar */
+  .navbar { margin-left: 80px; transition: margin-left 0.3s; }
+  .sidebar.expanded ~ .navbar { margin-left: 250px; }
+
+  /* Content */
+  .content { margin-left: 50px; padding: 20px; transition: margin-left 0.3s; margin-right: 0;}
+  .sidebar.expanded ~ .content { margin-left: 250px; }
+
+  /* Hamburger */
+  .hamburger { font-size: 1.5rem; cursor: pointer; }
+
+  /* Cards */
+  .card { border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+
+    /* Notifications */
+  .notification-badge {
+    position: absolute;
+    top: 0;
+    right: -5px;
+    font-size: 0.6rem;
+    background: red;
+    color: #fff;
+    border-radius: 50%;
+    padding: 2px 5px;
+  }
+  .custom-dropdown {
+      display: none;
+      position: fixed;
+      top: 70px; /* just below navbar */
+      right: 20px;
+      z-index: 2000;
+      background: white;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+      min-width: 250px;
+      transition: all 0.3s ease;
+      opacity: 0;
+      transform: translateY(-10px);
+      overflow-y: auto;
+      height: 500px;
+    }
+    .custom-dropdown.active {
+      display: block;
+      opacity: 1;
+      transform: translateY(0);
+    }
+    .custom-dropdown a {
+      display: block;
+      padding: 10px;
+      color: #333;
+      text-decoration: none;
+    }
+    .custom-dropdown a:hover {
+      background: #f5f5f5;
+    }
+    body {
+      background: linear-gradient(135deg, #050548, #1c1c84);
+      min-height: 150vh;
+      padding: 20px;
+    }
+
+    .card-custom {
+      height: 170px;
+      position: relative;
+      overflow: hidden;
+      border-radius: 20px;
+      box-shadow: 0 8px 18px rgba(0, 0, 0, 0.3);
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .card-custom:hover {
+      transform: translateY(-10px) scale(1.03);
+      box-shadow: 0 15px 25px rgba(0, 0, 0, 0.5);
+    }
+
+    .card-custom i.bg-icon {
+      position: absolute;
+      bottom: -20px;
+      right: -10px;
+      font-size: 110px;
+    }
+
+    .card-title {
+      font-weight: bold;
+      font-size: 1.1rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .card-title i {
+      font-size: 1.3rem;
+    }
+
+    .flex-card {
+      flex: 1 1 calc(19% - 1.5rem);
+      min-width: 200px;
+    }
+    .card-body::-webkit-scrollbar {
+      display: none;  /* Chrome, Safari */
+    }
+    #categoryBar, #subcategoryPie {
+      height: 300px !important; /* adjust as needed */
+    }
+    .calendar {
+    background: #1c1c84;
+    padding: 20px;
+    border-radius: 10px;
+    width: 400px;
+  }
+  .calendar header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+  .calendar header button {
+    background: #ffffff;
+    color: #050548;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 5px;
+    cursor: pointer;
+  }
+  .calendar table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  .calendar th, .calendar td {
+    text-align: center;
+    padding: 10px;
+    cursor: pointer;
+    border-radius: 5px;
+  }
+  .calendar th {
+    color: #ffffff;
+  }
+  .calendar td:hover {
+    background: #ffffff;
+    color: black;
+  }
+  .calendar .today {
+    background: #9ea3a9;
+    color: #fff;
+  }
+  .calendar .event {
+    background: #ffc107;
+    color: #000;
+  }
+  .legend-box {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 10px;
+  }
+  /* Modal base styles */
+.calendarbox {
+  display: none; 
+  position: fixed; 
+  z-index: 1000; 
+  left: 0; top: 20px;
+  width: 100%; height: 100%;
+  background: rgba(0,0,0,0.6);
+}
+
+/* Modal content box */
+.calendar-content {
+  background: #fff;
+  margin: 8% auto;
+  padding: 24px;
+  border-radius: 10px;
+  max-width: 600px;
+  position: relative;
+  box-shadow: 0 5px 30px rgba(0,0,0,0.3);
+}
+
+.close {
+  position: absolute;
+  top: 16px; right: 24px;
+  font-size: 28px;
+  cursor: pointer;
+  color: black;
+}
+
+.today {
+  border: 2px solid white !important;
+  border-radius: 10px;
+}
+.custom-modal-overlay {
+  position: fixed;
+  top: 0; left:0; right:0; bottom:0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1050;
+  visibility: hidden;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.custom-modal-overlay.show {
+  visibility: visible;
+  opacity: 1;
+}
+
+.custom-modal-dialog {
+  background: white;
+  border-radius: 0.3rem;
+  box-shadow: 0 0.5rem 1rem rgba(0,0,0,.15);
+  max-width: 900px;
+  width: 90%;
+  max-height: 80vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.custom-modal-lg {
+  max-width: 900px;
+}
+
+.custom-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  border-bottom: 1px solid #dee2e6;
+}
+
+.custom-modal-title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 500;
+}
+
+.custom-btn-close {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.custom-modal-body {
+  padding: 1rem;
+  overflow-y: auto;
+  flex-grow: 1;
+}
+
+th:hover {
+  background-color: grey; /* Light grey background on hover */
+  cursor: pointer; /* Shows a pointer cursor to indicate it's clickable */
+}
+
+</style>
+</head>
+<body>
+
+<div class="sidebar" id="sidebar">
+  <div class="text-center py-3">
+    <i class="fas fa-user-circle fs-2"></i>
+    <div id="user-email" class="small mt-2" style="display:none;">
+      {% if session.email %}
+        <span class="fw-bold">{{ session.email }}</span>
+      {% else %}
+        <span class="fw-bold">John Doe</span>
+      {% endif %}
+    </div>
+  </div>
+
+  <a href="{{ url_for('dashboard') }}" class="nav-link" data-bs-toggle="tooltip" title="Dashboard"><i class="fas fa-home"></i><span>Dashboard</span></a>
+  {% if session.role == 'Asset Manager' or session.role == 'Super Admin' %}
+  <a href="{{ url_for('view_users') }}" class="nav-link" data-bs-toggle="tooltip" title="Users"><i class="fas fa-users"></i><span>Users</span></a>
+  {% endif %}
+  <a href="{{ url_for('view_assets') }}" class="nav-link" data-bs-toggle="tooltip" title="Assets"><i class="fas fa-boxes"></i><span>Assets</span></a>
+  <a href="{{ url_for('view_messages') }}" class="nav-link" data-bs-toggle="tooltip" title="Messages"><i class="fas fa-envelope"></i><span>Messages</span></a>
+  <a href="{{ url_for('change_password') }}" class="nav-link" data-bs-toggle="tooltip" title="Change Password"><i class="fas fa-key"></i><span>Change Password</span></a>
+  <a href="{{ url_for('logout') }}" class="nav-link" data-bs-toggle="tooltip" title="Logout"><i class="fas fa-sign-out-alt"></i><span>Logout</span></a>
+</div>
+
+<nav class="navbar navbar-expand-lg navbar-light bg-white shadow fixed-top">
+  <div class="container-fluid d-flex align-items-center">
+    <div class="d-flex align-items-center">
+      <span class="hamburger me-3" id="hamburgerBtn"><i class="fas fa-bars"></i></span>
+      <img src="{{ url_for('static', filename='images/logo.jpg') }}" alt="Logo" height="40" class="me-2">
+      <span class="fw-bold fs-3 text-danger" style="font-family: 'Times New Roman', Times, serif;">SREE VENKATESHWARA ENTERPRISES</span>
+    </div>
+    <div class="ms-auto position-relative me-3">
+      <button id="notifBtn" class="btn btn-light position-relative">
+        <i class="fas fa-bell fs-4"></i>
+        {% if total_count > 0 %}
+          <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+            {{ total_count }}
+          </span>
+        {% endif %}
+      </button>
+    </div>
+  </div>
+</nav>
+
+  <div id="notifDropdown" class="custom-dropdown">
+    {% if session.role == 'Asset Manager' %}
+    {% if pending_requests %}
+      {% for req in pending_requests %}
+        <a href="{{ url_for('approve_request_page', request_id=req.id) }}">
+          Request to {{ req.request_type }} by {{ req.request_by }}
+        </a>
+      {% endfor %}
+    {% endif %}
+    {% endif %}
+    {% if expiring_warranties %}
+      <hr class="my-1">
+      {% for warranty in expiring_warranties %}
+        <a href="#">Warranty expiring for {{ warranty.asset_name }} on {{ warranty.expiry_date }}</a>
+      {% endfor %}
+    {% endif %}
+    {% if expiring_insurances %}
+      <hr class="my-1">
+      {% for insurance in expiring_insurances %}
+        <a href="#">Insurance expiring for {{ insurance.asset_name }} on {{ insurance.expiry_date }}</a>
+      {% endfor %}
+    {% endif %}
+    {% if not pending_requests and not expiring_warranties and not expiring_insurances %}
+      <span class="d-block p-2 text-muted">No notifications</span>
+    {% else %}
+      <hr class="my-1">
+      {% if session.role == 'Asset Manager' %}
+      <a href="{{ url_for('view_requests') }}" class="text-primary">View All Pending Requests</a>
+      {% endif %}
+      <a href="{{ url_for('view_notifications') }}" class="text-primary">View All Notifications</a>
+    {% endif %}
+  </div>
+
+<div class="content mt-4">
+  <div class="container-fluid mt-3">
+    <div class="d-flex flex-wrap justify-content-center gap-4">
+
+      {% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    {% for category, message in messages %}
+      <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+    {% endfor %}
+  {% endif %}
+{% endwith %}
+      
+      <!-- Total Assets -->
+      <div class="flex-card">
+        <div class="card text-white bg-primary card-custom" data-bs-toggle="modal" data-bs-target="#viewAssetsModal" style="cursor:pointer;">
+          <div class="card-body">
+            <h5 class="card-title"><i class="fas fa-box"></i> Total Assets</h5>
+            <p class="card-text fs-2 mt-2">{{ total_assets }}</p>
+            <i class="fas fa-box bg-icon"></i>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal: Total Assets -->
+      <div class="modal fade" id="viewAssetsModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-xl">
+          <div class="modal-content">
+            <div class="modal-header bg-primary d-flex justify-content-between align-items-center position-relative">
+              <h5 class="modal-title text-white fw-bold fs-2 mb-0">Assets</h5>
+              <div class="d-flex align-items-center" style="gap: 0.5rem; min-width: 300px;">
+              <input type="text" class="form-control asset-search-input" placeholder="Search assets...">
+              <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+              </div>
+            </div>
+            <div class="modal-body">
+              <table class="table table-bordered table-hover sortable-table assetSearch">
+                <thead class="table-primary">
+                  <tr>
+                    <th>Tag</th>
+                    <th>Name</th>
+                    <th>Category</th>
+                    <th>Purchase Date</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for asset in assets %}
+                  <tr onclick="window.location='{{ url_for('asset_details', asset_id=asset[0]) }}';" style="cursor:pointer;">
+                    <td>{{ asset[1] }}</td>
+                    <td>{{ asset[2] }}</td>
+                    <td>{{ asset[3] }}</td>
+                    <td>{{ asset[5] }}</td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Total Value -->
+      <div class="flex-card">
+        <div class="card text-white card-custom" style="background-color: orangered; cursor:pointer;" data-bs-toggle="modal" data-bs-target="#viewAssetValueModal">
+          <div class="card-body">
+            <h5 class="card-title"><i class="fas fa-dollar-sign"></i> Total Value</h5>
+            <p class="card-text fs-2 mt-2">{{ total }}</p>
+            <i class="fas fa-dollar-sign bg-icon"></i>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal: Total Value -->
+      <div class="modal fade" id="viewAssetValueModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-xl">
+          <div class="modal-content">
+            <div class="modal-header d-flex justify-content-between align-items-center position-relative" style="background-color: orangered;">
+              <h5 class="modal-title text-white fw-bold fs-2 mb-0">Total Assets Value</h5>
+              <div class="d-flex align-items-center" style="gap: 0.5rem; min-width: 300px;">
+              <input type="text" class="form-control asset-search-input" placeholder="Search assets...">
+              <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+              </div>
+            </div>
+            <div class="modal-body">
+              <table class="table table-hover table-bordered sortable-table assetSearch">
+                <thead class="table-primary">
+                  <tr>
+                    <th>Tag</th>
+                    <th>Name</th>
+                    <th>Purchase Cost</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for asset in assets %}
+                  <tr onclick="window.location='{{ url_for('asset_details', asset_id=asset[0]) }}';" style="cursor:pointer;">
+                    <td>{{ asset[1] }}</td>
+                    <td>{{ asset[2] }}</td>
+                    <td>{{ asset[6] }}</td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Assets Active -->
+      <div class="flex-card">
+        <div class="card text-dark bg-warning card-custom" data-bs-toggle="modal" data-bs-target="#viewAssetActiveModal" style="cursor:pointer;">
+          <div class="card-body">
+            <h5 class="card-title"><i class="fas fa-check-circle"></i> Assets Active</h5>
+            <p class="card-text fs-2 mt-2">{{ assets_active }}</p>
+            <i class="fas fa-check-circle bg-icon"></i>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal: Assets Active -->
+      <div class="modal fade" id="viewAssetActiveModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-xl">
+          <div class="modal-content">
+            <div class="modal-header bg-warning d-flex justify-content-between align-items-center position-relative">
+              <h5 class="modal-title text-white fw-bold fs-2 mb-0">Assets Active</h5>
+              <div class="d-flex align-items-center" style="gap: 0.5rem; min-width: 300px;">
+              <input type="text" class="form-control asset-search-input" placeholder="Search assets...">
+              <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+              </div>
+            </div>
+            <div class="modal-body">
+              <table class="table table-hover table-bordered sortable-table assetSearch">
+                <thead class="table-primary">
+                  <tr>
+                    <th>Tag</th>
+                    <th>Name</th>
+                    <th>Category</th>
+                    <th>Purchase Date</th>
+                    <th>Purchase Cost</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for aa in aas %}
+                  <tr onclick="window.location='{{ url_for('asset_details', asset_id=aa[0]) }}';" style="cursor:pointer;">
+                    <td>{{ aa[1] }}</td>
+                    <td>{{ aa[2] }}</td>
+                    <td>{{ aa[3] }}</td>
+                    <td>{{ aa[5] }}</td>
+                    <td>{{ aa[6] }}</td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Assets Inactive -->
+      <div class="flex-card">
+        <div class="card text-white bg-success card-custom" data-bs-toggle="modal" data-bs-target="#viewAssetInactiveModal" style="cursor:pointer;">
+          <div class="card-body">
+            <h5 class="card-title"><i class="fas fa-times-circle"></i> Assets Inactive</h5>
+            <p class="card-text fs-2 mt-2">{{ assets_inactive }}</p>
+            <i class="fas fa-times-circle bg-icon"></i>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal: Assets Inactive -->
+      <div class="modal fade" id="viewAssetInactiveModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-xl">
+          <div class="modal-content">
+            <div class="modal-header bg-success d-flex justify-content-between align-items-center position-relative">
+              <h5 class="modal-title text-white fw-bold fs-2 mb-0">Assets Inactive</h5>
+              <div class="d-flex align-items-center" style="gap: 0.5rem; min-width: 300px;">
+              <input type="text" class="form-control asset-search-input" placeholder="Search assets...">
+              <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+              </div>
+            </div>
+            <div class="modal-body">
+              <table class="table table-hover table-bordered sortable-table assetSearch">
+                <thead class="table-primary">
+                  <tr>
+                    <th>Tag</th>
+                    <th>Name</th>
+                    <th>Category</th>
+                    <th>Purchase Date</th>
+                    <th>Purchase Cost</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for ia in inas %}
+                  <tr onclick="window.location='{{ url_for('asset_details', asset_id=ia[0]) }}';" style="cursor:pointer;">
+                    <td>{{ ia[1] }}</td>
+                    <td>{{ ia[2] }}</td>
+                    <td>{{ ia[3] }}</td>
+                    <td>{{ ia[5] }}</td>
+                    <td>{{ ia[6] }}</td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Assets Under Maintenance -->
+      <div class="flex-card">
+        <div class="card text-white card-custom" style="background-color: purple; cursor:pointer;" data-bs-toggle="modal" data-bs-target="#viewAssetMaintenance">
+          <div class="card-body">
+            <h5 class="card-title"><i class="fas fa-cogs"></i> Assets Under Maintenance</h5>
+            <p class="card-text fs-2 mt-2">{{ assets_under_maintenance }}</p>
+            <i class="fas fa-cogs bg-icon"></i>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal: Assets Under Maintenance -->
+      <div class="modal fade" id="viewAssetMaintenance" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-xl">
+          <div class="modal-content">
+            <div class="modal-header d-flex justify-content-between align-items-center position-relative" style="background-color: purple;">
+              <h5 class="modal-title text-white fw-bold fs-2 mb-0">Assets Under Maintenance</h5>
+              <div class="d-flex align-items-center" style="gap: 0.5rem; min-width: 300px;">
+              <input type="text" class="form-control asset-search-input" placeholder="Search assets...">
+              <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+              </div>
+            </div>
+            <div class="modal-body">
+              <table class="table table-hover table-bordered sortable-table assetSearch">
+                <thead class="table-primary">
+                  <tr>
+                    <th>Type</th><th>From Date</th><th>To Date</th><th>Company</th><th>Serviced By</th><th>Asset</th><th>Part Used</th><th>Cost</th><th>remarks</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for r in maintenance_records %}
+                  <tr>
+                    <td>{{ r[6] or 'N/A' }}</td>
+                    <td>{{ r[1] or 'N/A' }}</td>
+                    <td>{{ r[2] or 'N/A' }}</td>
+                    <td>{{ r[3] or 'N/A' }}</td>
+                    <td>{{ r[4] or 'N/A' }}</td>
+                    <td>{{ r[9] or 'N/A' }}</td>
+                    <td>{{ r[10] or 'N/A' }}</td>
+                    <td>{{ r[5] or 'N/A' }}</td>
+                    <td>{{ r[7] or 'N/A' }}</td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div> <!-- End flex cards -->
+
+    <!-- Charts & Calendar -->
+    <div class="row pt-4 row-cols-2 g-0">
+      <div style="flex: 1 1 30%; min-width: 280px;">
+        <div class="card shadow-sm border-0 text-white" style="background-color: #1c1c84; border-top-right-radius: 0; border-bottom-right-radius: 0;">
+          <div class="card-header bg-transparent fw-bold">Asset Category Breakdown</div>
+          <div class="card-body d-flex justify-content-center align-items-center" style="height:250px;">
+            <canvas id="categoryPie"></canvas>
+          </div>
+        </div>
+      <div class="card shadow-sm border-0 text-white flex-grow-1 mt-3" style="background-color: #1c1c84; border-radius: 0.5rem;">
+        <div class="card-header d-flex justify-content-between">
+          <span>Upcoming Alerts</span>
+          <a href="{{ url_for('view_notifications') }}" class="text-decoration-none text-white">More</a>
+        </div>
+        <div class="card-body overflow-auto" style="max-height: 300px;">
+          <ul class="list-unstyled mb-0 text-white">
+            {% if expiring_warranties %}
+              <hr class="my-1">
+              {% for warranty in expiring_warranties %}<p>Warranty expiring for {{ warranty.asset_name }} on {{ warranty.expiry_date }}</p>
+              {% endfor %}{% endif %}
+            {% if expiring_insurances %}
+              <hr class="my-1">
+              {% for insurance in expiring_insurances %}<p>Insurance expiring for {{ insurance.asset_name }} on {{ insurance.expiry_date }}</p>
+              {% endfor %}{% endif %}
+            {% if not expiring_warranties and not expiring_insurances %}
+              <span class="d-block p-2 text-muted">No notifications</span>{% endif %}
+          </ul>
+        </div>
+      </div>
+    </div>
+    <!-- Category Assets Modal -->
+<div class="modal fade" id="categoryModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content text-dark">
+      <div class="modal-header bg-secondary">
+        <h5 class="modal-title" id="categoryModalLabel">Assets in Category</h5>
+      </div>
+      <div class="modal-body" id="modalBody">
+      </div>
+    </div>
+  </div>
+</div>
+
+
+
+      <div style="flex: 1 1 30%; min-width: 280px;">
+        <div class="card shadow-sm border-0 text-white" style="background-color: #1c1c84; border-top-left-radius: 0; border-bottom-left-radius: 0;">
+          <div class="card-header bg-transparent fw-bold">Maintenance Trend Over Time</div>
+          <div class="card-body d-flex justify-content-center align-items-center" style="height:250px;">
+            <canvas id="maintenanceLine"></canvas>
+          </div>
+        </div>
+      <div class="card shadow-sm border-0 text-white flex-grow-1 mt-3" style="background-color: #1c1c84; border-radius: 0.5rem; margin-left: 20px;">
+        <div class="card-header d-flex justify-content-between"><span>Quick Actions</span></div>
+        <div class="card-body overflow-auto">
+          {% if session.role == 'Asset Entry Officer' %}
+          <a href="{{ url_for('add_asset') }}" class="btn btn-primary d-block my-2 w-50"><i class="fas fa-plus-circle me-2"></i> Add Asset</a>
+          {% elif session.role == 'Technician' %}
+          <a href="{{ url_for('add_maintenance') }}" class="btn btn-primary d-block my-2 w-50"><i class="fas fa-plus-circle me-2"></i> Add Maintenance</a>
+          {% elif session.role == 'Asset Manager' %}
+          <div class="d-flex my-2">
+          <a href="{{ url_for('add_user') }}" class="btn btn-primary me-2 w-50"><i class="fas fa-plus-circle me-2"></i> Add Users</a>
+          <a href="{{ url_for('view_requests') }}" class="btn btn-primary w-50"><i class="fas fa-plus-circle me-2"></i> Requests</a>
+          </div>
+          {% else %}
+          <a href="{{ url_for('view_assets') }}" class="btn btn-primary d-block my-2 w-50"><i class="fas fa-plus-circle me-2"></i> View Assets</a>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+
+      <!-- Calendar -->
+      <div class="calendar text-white ms-4" style="height: 450px; flex: 1 1 30%; min-width: 320px;">
+        <header>
+          <button id="prev">&lt;</button>
+          <h3 id="monthYear"></h3>
+          <button id="next">&gt;</button>
+        </header>
+        <table>
+          <thead>
+            <tr>
+              <th>S</th><th>M</th><th>T</th><th>W</th><th>T</th><th>F</th><th>S</th>
+            </tr>
+          </thead>
+          <tbody id="calendarBody"></tbody>
+        </table>
+
+        <!-- Legend -->
+        <div class="calendar-legend mt-1">
+          <div class="d-flex flex-column gap-1">
+            <div class="d-flex align-items-center gap-4">
+              <div class="d-flex align-items-center">
+                <span class="legend-box" style="background-color: #28a745;"></span>
+                <span class="ms-2">Maintenance</span>
+              </div>
+              <div class="d-flex align-items-center">
+                <span class="legend-box" style="background-color: hsl(26, 100%, 51%);"></span>
+                <span class="ms-2">Repair</span>
+              </div>
+              <div class="d-flex align-items-center">
+                <span class="legend-box" style="background-color: hsl(214, 70%, 54%);"></span>
+                <span class="ms-2">Monthly Maintenance</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card shadow-sm border-0 text-white flex-grow-1 w-100" style="background-color:#1c1c84; margin-top: 4rem;">
+        <div class="card-header bg-transparent fw-bold">Asset Lifecycle Distribution</div>
+        <div class="card-body d-flex justify-content-center align-items-center" style="height:300px;">
+          <canvas id="lifecycleBar"></canvas>
+        </div>
+      </div>
+      <!-- Assets Modal -->
+<div class="modal fade" id="assetsModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content text-dark">
+      <div class="modal-header " style="background-color: palevioletred ;">
+        <h5 class="modal-title" id="modalTitle">Assets Details</h5></div>
+      <div class="modal-body text-dark" id="assetsModalBody">
+      </div>
+    </div>
+  </div>
+</div>
+    </div>
+<!-- Custom Modal Structure -->
+<div id="categoryModal" class="custom-modal-overlay" tabindex="-1" aria-hidden="true">
+  <div class="custom-modal-dialog custom-modal-lg">
+    <div class="custom-modal-content text-dark">
+      <div class="custom-modal-header">
+        <h5 class="custom-modal-title" id="categoryModalLabel">Assets in Category</h5>
+        <button type="button" class="custom-btn-close" aria-label="Close" onclick="closeCategoryModal()">×</button>
+      </div>
+      <div class="custom-modal-body" id="modalBody">
+        <!-- Your dynamic content goes here -->
+      </div>
+    </div>
+  </div>
+</div>
+  </div>
+<div class="card shadow-sm mb-4 col-md-8" style="background-color:#1c1c84; max-height: 350px;">
+  <div class="card-header text-white" style="background-color:#1c1c84;">
+    <h5 class="mb-0 text-white">Recent Activities</h5>
+  </div>
+  <div class="card-body p-0" style="max-height: 300px; overflow-y: auto;">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0 custom-table ">
+        <thead>
+          <tr>
+            <th>Activity</th>
+            <th>Date/Time</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for activity in activities %}
+            <tr {% if session.role == 'Asset Manager' and activity.id %} onclick="window.location.href='{{ url_for('approve_request_page', request_id=activity.id) }}'" style="cursor: pointer;" {% endif %}>
+              <td>{{ activity.message }}</td>
+              <td>{{ activity.time }}</td>
+            </tr>
+          {% else %}
+            <tr>
+              <td colspan="2" class="text-center">No recent activities</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Event Modal -->
+<div id="eventModal" class="calendarbox">
+  <div class="calendar-content">
+    <span id="closeModal" class="close">&times;</span>
+    <h2 id="eventTitle"></h2>
+    <p id="eventTime"></p>
+    <p id="eventServiced"></p>
+    <p id="eventCompany"></p>
+    <p id="eventAsset"></p>
+    <p id="eventPart"></p>
+    <p id="eventCost"></p>
+    <p id="eventRemarks"></p>
+  </div>
+</div>
+
+<style>
+/* Custom table theme */
+.custom-table {
+  background-color: #1c1c84 !important;
+  color: white !important;
+}
+
+.custom-table thead th {
+  background-color: #1c1c84 !important;
+  color: white !important;
+  border-color: #1c1c84 !important;
+}
+
+.custom-table tbody tr {
+  background-color: #1c1c84 !important;
+  color: white !important;
+}
+
+.custom-table tbody tr:hover {
+  background-color: #1c1c84 !important; /* darker blue on hover */
+  color: white !important;
+}
+
+.custom-table td, 
+.custom-table th {
+  border-color: #1c1c84 !important; /* subtle border */
+  background-color: #1c1c84 !important;
+  color: white;
+}
+</style>
+
+<!-- Scripts -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  const monthYear = document.getElementById('monthYear');
+  const calendarBody = document.getElementById('calendarBody');
+  const prev = document.getElementById('prev');
+  const next = document.getElementById('next');
+
+  let today = new Date();
+  let currentMonth = today.getMonth();
+  let currentYear = today.getFullYear();
+  let events = [];
+
+  const months = [
+    "January","February","March","April","May","June",
+    "July","August","September","October","November","December"
+  ];
+
+  async function loadEvents() {
+    const res = await fetch("/api/maintenance_events");
+    events = await res.json();
+    renderCalendar(currentMonth, currentYear);
+  }
+
+  function renderCalendar(month, year) {
+    calendarBody.innerHTML = '';
+    monthYear.textContent = `${months[month]} ${year}`;
+
+    let firstDay = new Date(year, month, 1).getDay();
+    let daysInMonth = new Date(year, month + 1, 0).getDate();
+    
+    let date = 1;
+    for (let i = 0; i < 6; i++) {
+      let row = document.createElement('tr');
+      for (let j = 0; j < 7; j++) {
+        let cell = document.createElement('td');
+        if (i === 0 && j < firstDay) {
+          cell.textContent = '';
+        } else if (date > daysInMonth) {
+          cell.textContent = '';
+        } else {
+          cell.textContent = date;
+          let fullDate = `${year}-${String(month+1).padStart(2,'0')}-${String(date).padStart(2,'0')}`;
+
+          // Highlight today
+          if (date === today.getDate() && month === today.getMonth() && year === today.getFullYear()) {
+            cell.classList.add('today');
+          }
+
+          // Check events
+          events.forEach(ev => {
+            let evDate = ev.start.split("T")[0];
+            if (evDate === fullDate) {
+              cell.classList.add('event');
+              cell.style.backgroundColor = ev.color;
+              cell.title = ev.title;
+
+              // Show details on click
+              cell.addEventListener("click", () => {
+                cell.addEventListener("click", () => {
+  document.getElementById('eventTitle').textContent = ev.title;
+  document.getElementById('eventTime').textContent =`Start: ${ev.start}${ev.end ? `, End: ${ev.end}` : ""}`;
+  document.getElementById('eventServiced').textContent =`Serviced By: ${ev.serviced_by || "None"}`;
+  document.getElementById('eventAsset').textContent = `Asset: ${ev.asset_name || "N/A"}`;
+  document.getElementById('eventPart').textContent = `Part: ${ev.part_name || "N/A"}`;
+  document.getElementById('eventCompany').textContent = `Company: ${ev.company || "N/A"}`;
+  document.getElementById('eventRemarks').textContent = `Remarks: ${ev.remarks || "None"}`;
+  document.getElementById('eventCost').textContent = `Cost: ${ev.cost || "N/A"}`;
+  document.getElementById('eventModal').style.display = "block";
+});
+
+// Add modal close logic outside renderCalendar, only once:
+document.getElementById('closeModal').onclick = function() {
+  document.getElementById('eventModal').style.display = "none";
+};
+
+// To close modal when clicking outside modal-content
+window.onclick = function(event) {
+  const modal = document.getElementById('eventModal');
+  if (event.target === modal) modal.style.display = "none";
+};
+
+              });
+            }
+          });
+          date++;
+        }
+        row.appendChild(cell);
+      }
+      calendarBody.appendChild(row);
+    }
+  }
+
+  prev.addEventListener('click', () => {
+    currentMonth--;
+    if (currentMonth < 0) {
+      currentMonth = 11;
+      currentYear--;
+    }
+    renderCalendar(currentMonth, currentYear);
+  });
+
+  next.addEventListener('click', () => {
+    currentMonth++;
+    if (currentMonth > 11) {
+      currentMonth = 0;
+      currentYear++;
+    }
+    renderCalendar(currentMonth, currentYear);
+  });
+
+  loadEvents();
+</script>
+<script>
+  // Sidebar Toggle
+  const sidebar = document.getElementById('sidebar');
+  const hamburger = document.getElementById('hamburgerBtn');
+  hamburger.addEventListener('click', () => {
+    sidebar.classList.toggle('expanded');
+  });
+
+  // Notifications Toggle
+  notifBtn.addEventListener('click', function(e) {
+    e.stopPropagation();
+    notifDropdown.classList.toggle('active');
+  });
+
+  document.addEventListener('click', function(e) {
+    if (!notifBtn.contains(e.target) && !notifDropdown.contains(e.target)) {
+      notifDropdown.classList.remove('active');
+    }
+  });
+
+  // Maintenance Line Chart
+  fetch("/api/maintenance_trend")
+    .then(res => res.json())
+    .then(data => {
+      new Chart(document.getElementById("maintenanceLine"), {
+        type: "line",
+        data: {
+          labels: data.labels,
+          datasets: [{
+            label: "Maintenance Cost",
+            data: data.data,
+            borderColor: "#ffffff", 
+            backgroundColor: "rgba(255,255,255,0.2)",
+            tension: 0.3,
+            fill: true,
+            pointBackgroundColor: "#007bff",
+            pointRadius: 4
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: { 
+            legend: { position: "top", align: "end", labels: { color: "#ffffff" } } 
+          },
+          scales: {
+            y: { 
+              beginAtZero: true, 
+              title: { display: true, text: "Cost (₹)", color: "#ffffff" }, 
+              ticks: { color: "#ffffff" } 
+            },
+            x: { 
+              title: { display: true, text: "Month", color: "#ffffff" }, 
+              ticks: { color: "#ffffff" } 
+            }
+          }
+        }
+      });
+    });
+
+  // Category Pie Chart
+  fetch("/api/category_distribution")
+    .then(res => res.json())
+    .then(data => {
+      const ctx = document.getElementById("categoryPie").getContext("2d");
+      const categoryChart = new Chart(ctx, {
+        type: "doughnut",
+        data: {
+          labels: data.labels,
+          datasets: [{
+            data: data.data,
+            backgroundColor: [
+              "#28a745", "#ffc107", "#dc3545", "#6c757d","#fd7e14", "#20c997",
+              "#e83e8c","#adb5bd", "#198754", "#ff6f61", "#6f42c1","#d63384",
+              "#f8f9fa", "#343a40", "#b22222", "#ff8c00","#8fbc8f", "#daa520",
+              "#ff1493","#708090", "#32cd32", "#ff4500", "#a0522d","#2e8b57",
+              "#ff69b4", "#cd5c5c", "#9932cc","#ffb6c1", "#556b2f", "#8b0000",
+              "#20b2aa","#ff6347", "#ff7f50", "#ffd700", "#adff2f","#ba55d3",
+              "#ff00ff", "#ffdab9"
+            ]
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          cutout: "50%",
+          plugins: {
+            legend: {
+              position: "right",
+              align: "center",
+              labels: {
+                color: "#ffffff",
+                boxWidth: 15,
+                padding: 20
+              }
+            }
+          },
+          onClick: (evt, activeEls) => {
+            if(activeEls.length > 0) {
+              const idx = activeEls[0].index;
+              const category = data.labels[idx];
+
+              // Fetch assets for the clicked category
+              fetch(`/api/assets_by_category?category=${encodeURIComponent(category)}`)
+                .then(res => res.json())
+                .then(assets => {
+                  const modalBody = document.getElementById("modalBody");
+                  const modalTitle = document.getElementById("categoryModalLabel");
+
+                  // Set modal title to clicked category
+                  modalTitle.textContent = `Assets in Category: ${category}`;
+
+                  if (assets.length === 0) {
+                    modalBody.innerHTML = "<p>No assets found for this category.</p>";
+                  } else {
+                    // Build a table
+                    let html = `
+                      <table class="table table-bordered table-hover sortable-table assetSearch">
+                        <thead>
+                          <tr>
+                            <th>Tag</th>
+                            <th>Asset Name</th>
+                            <th>Purchase Date</th>
+                            <th>Purchase Cost</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                    `;
+
+                    assets.forEach(a => {
+                      html += `
+                        <tr onclick="window.location.href='/asset/${a.id}'" style="cursor:pointer;">
+                          <td>${a.tag}</td>
+                          <td>${a.asset_name}</td>
+                          <td>${a.purchase_date}</td>
+                          <td>${a.purchase_cost}</td>
+                        </tr>
+                      `;
+                    });
+
+                    html += `
+                        </tbody>
+                      </table>
+                    `;
+
+                    modalBody.innerHTML = html;
+                  }
+
+                  // Show the Bootstrap modal
+                  const modal = new bootstrap.Modal(document.getElementById('categoryModal'));
+                  modal.show();
+                });
+            }
+          }
+        }
+      });
+    });
+
+  // Lifecycle Bar Chart
+  fetch("/api/lifecycle_distribution")
+  .then(res => res.json())
+  .then(data => {
+    const ctx = document.getElementById("lifecycleBar").getContext("2d");
+
+    const lifecycleChart = new Chart(ctx, {
+      type: "bar",
+      data: {
+        labels: data.labels,
+        datasets: [{
+          label: "Number of Assets",
+          data: data.data,
+          backgroundColor: ["#6c5ce7", "#ff7675", "#55efc4"],
+          color: "#ffffff"
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { display: false }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            title: { display: true, text: "Assets", color: "#ffffff"} ,ticks: { color: "#ffffff"}
+          },
+          x: {
+            title: { display: true, text: "Lifecycle Stage", color: "#ffffff"} ,ticks: { color: "#ffffff"}
+          }
+        },
+        onClick: (evt, elements) => {
+          if (elements.length > 0) {
+            const index = elements[0].index;
+            const lifecycleStage = data.labels[index];
+
+            // Fetch assets for the clicked lifecycle stage
+            fetch(`/api/assets_by_lifecycle?stage=${encodeURIComponent(lifecycleStage.toLowerCase())}`)
+              .then(res => res.json())
+              .then(assets => {
+                const modalTitle = document.getElementById("modalTitle");
+                const modalBody = document.getElementById("assetsModalBody");
+
+                modalTitle.textContent = `Assets in Lifecycle Stage: ${lifecycleStage}`;
+
+                if (assets.length === 0) {
+                  modalBody.innerHTML = "<p>No assets found for this lifecycle stage.</p>";
+                } else {
+                  let tableHtml = `
+                    <table class="table table-bordered table-hover sortable-table assetSearch">
+                    <thead >
+                      <tr>
+                      <th style="color: black !important;">Name</th>
+                      <th style="color: black !important;">Category</th>
+                      <th style="color: black !important;">Purchase Date</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                  `;
+                  assets.forEach(asset => {
+                    tableHtml += `
+                      <tr onclick="window.location.href='/asset/${asset.id}'" style="cursor:pointer;">
+                        <td>${asset.asset_name}</td>
+                        <td>${asset.category || "-"}</td>
+                        <td>${asset.purchase_date || "-"}</td>
+                      </tr>
+                    `;
+                  });
+                  tableHtml += "</tbody></table>";
+                  modalBody.innerHTML = tableHtml;
+                }
+
+                // Show the Bootstrap modal
+                const bsModal = new bootstrap.Modal(document.getElementById('assetsModal'));
+                bsModal.show();
+              })
+              .catch(err => {
+                console.error("Failed to fetch assets:", err);
+              });
+          }
+        }
+      }
+    });
+  })
+  .catch(err => {
+    console.error("Failed to fetch lifecycle distribution:", err);
+  });
+
+</script>
+<script>
+  // Attach sorting functionality on all tables with the class 'sortable-table'
+  document.querySelectorAll('table.sortable-table').forEach(table => {
+    const headers = table.querySelectorAll('th');
+    let sortDirection = Array(headers.length).fill(true); // Track ascending/descending per column
+
+    headers.forEach((header, index) => {
+      header.style.cursor = 'pointer'; // Indicate it's clickable
+      
+      header.addEventListener('click', () => {
+        const tbody = table.tBodies[0];
+        const rows = Array.from(tbody.querySelectorAll('tr'));
+        const ascending = sortDirection[index];
+        
+        rows.sort((a, b) => {
+          const aText = a.cells[index].textContent.trim();
+          const bText = b.cells[index].textContent.trim();
+
+          // Use numeric comparison if both are numbers
+          const aNum = parseFloat(aText);
+          const bNum = parseFloat(bText);
+
+          if (!isNaN(aNum) && !isNaN(bNum)) {
+            return ascending ? aNum - bNum : bNum - aNum;
+          }
+
+          // Fallback to localeCompare for strings
+          return ascending 
+            ? aText.localeCompare(bText, undefined, { numeric: true }) 
+            : bText.localeCompare(aText, undefined, { numeric: true });
+        });
+
+        // Clear existing rows and append sorted rows
+        while (tbody.firstChild) {
+          tbody.removeChild(tbody.firstChild);
+        }
+        rows.forEach(row => tbody.appendChild(row));
+
+        // Toggle the sorting direction for next click
+        sortDirection[index] = !ascending;
+      });
+    });
+  });
+
+document.querySelectorAll('.asset-search-input').forEach(input => {
+    input.addEventListener('keyup', function() {
+        const searchValue = this.value.toLowerCase();
+
+        // Find the container (modal) enclosing this input
+        const modal = this.closest('.modal, .modal-dialog, .modal-content');
+        if (!modal) return;
+
+        // Find all tables with class 'assetSearch' inside this modal
+        const tables = modal.querySelectorAll('table.assetSearch');
+
+        tables.forEach(table => {
+            table.querySelectorAll('tbody tr').forEach(row => {
+                const cells = row.querySelectorAll('td');
+                let match = false;
+                cells.forEach(cell => {
+                    if (cell.innerText.toLowerCase().includes(searchValue)) {
+                        match = true;
+                    }
+                });
+                row.style.display = (searchValue === '' || match) ? '' : 'none';
+            });
+        });
+    });
+});
+</script>
+<style>
+  /* Ensure charts fill space */
+  #categoryBar,
+  #subcategoryPie,
+  #maintenanceLine {
+    width: 100% !important;
+    height: 300px !important;  /* adjust as needed */
+  }
+
+  #lifecycleBar {
+    height: 300px !important;  /* or any fixed value */
+  }
+</style>

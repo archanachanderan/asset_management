@@ -36,15 +36,15 @@
   </header>
 
   <div class="container pt-5 mt-5">
-    <div class="text-center mb-5" data-aos="fade-down" data-aos-delay="1500">
-      <h2 class="fw-bold display-5">Contact Us</h2>
+    <div class="text-center mb-4" data-aos="fade-down" data-aos-delay="1500">
+      <h2 class="fw-bold fs-3">Contact Us</h2>
       <p class="text-muted">We’d love to hear from you. Reach out anytime.</p>
     </div>
 
-    <div class="row justify-content-center g-4">
+    <div class="row justify-content-center g-3">
       <!-- Email -->
-      <div class="col-md-4 mb-2" data-aos="fade-up" data-aos-delay="2000">
-        <div class="bg-white p-4 rounded shadow text-center h-100">
+      <div class="col-md-4 mb-1" data-aos="fade-up" data-aos-delay="2000">
+        <div class="bg-white p-2 rounded shadow text-center h-100">
           <i class="bi bi-envelope-fill text-danger fs-1 mb-5"></i>
           <h5 class="fw-bold">Email</h5>
           <p><a href="mailto:sveprscomp@gmail.com" class="text-decoration-none text-dark">sveprscomp@gmail.com</a></p>
@@ -52,8 +52,8 @@
       </div>
 
       <!-- Phone -->
-      <div class="col-md-4 mb-2" data-aos="fade-up" data-aos-delay="2500">
-        <div class="bg-white p-4 rounded shadow text-center h-100">
+      <div class="col-md-4 mb-1" data-aos="fade-up" data-aos-delay="2500">
+        <div class="bg-white p-2 rounded shadow text-center h-100">
           <i class="bi bi-telephone-fill text-danger fs-1 mb-5"></i>
           <h5 class="fw-bold">Phone</h5>
           <p><a href="tel:+919242875555" class="text-decoration-none text-dark">+91 9242875555</a></p>
@@ -61,8 +61,8 @@
       </div>
 
       <!-- Address -->
-      <div class="col-md-4 mb-2" data-aos="fade-up" data-aos-delay="3000">
-        <div class="bg-white p-4 rounded shadow text-center h-100">
+      <div class="col-md-4 mb-1" data-aos="fade-up" data-aos-delay="3000">
+        <div class="bg-white p-2 rounded shadow text-center h-100">
           <i class="bi bi-geo-alt-fill text-danger fs-1 mb-5"></i>
           <h5 class="fw-bold">Address</h5>
           <p>
@@ -75,7 +75,18 @@
       </div>
     </div>
 
-    <div class="container mt-5">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    {% for category, message in messages %}
+      <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+    {% endfor %}
+  {% endif %}
+{% endwith %}
+
+    <div class="container mt-3">
   <div class="row g-4" data-aos="zoom-in-up" data-aos-delay="3500">
     <!-- Google Map Column -->
     <div class="col-md-6">
@@ -99,9 +110,14 @@
               <div class="invalid-feedback">Please enter your name.</div>
             </div>
             <div class="col-md-6">
+            <input type="phone" name="phone" class="form-control" placeholder="Enter your phone number" required>
+            <div class="invalid-feedback">Please enter a valid phone number.</div>
+          </div>
+          </div>
+
+          <div class="mb-3">
               <input type="email" name="email" class="form-control" placeholder="Enter your email address" required>
               <div class="invalid-feedback">Please enter a valid email address.</div>
-            </div>
           </div>
 
           <!-- Message -->
