@@ -345,7 +345,7 @@ th:hover {
     {% if pending_requests %}
       {% for req in pending_requests %}
         <a href="{{ url_for('approve_request_page', request_id=req.id) }}">
-          Request to {{ req.request_type }} by {{ req.request_by }}
+          Request to {{ req.request_type }} by {{ req.requested_by }}
         </a>
       {% endfor %}
     {% endif %}
@@ -376,17 +376,6 @@ th:hover {
 <div class="content mt-4">
   <div class="container-fluid mt-3">
     <div class="d-flex flex-wrap justify-content-center gap-4">
-
-      {% with messages = get_flashed_messages(with_categories=true) %}
-  {% if messages %}
-    {% for category, message in messages %}
-      <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
-        {{ message }}
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-      </div>
-    {% endfor %}
-  {% endif %}
-{% endwith %}
       
       <!-- Total Assets -->
       <div class="flex-card">
@@ -659,7 +648,7 @@ th:hover {
               {% for insurance in expiring_insurances %}<p>Insurance expiring for {{ insurance.asset_name }} on {{ insurance.expiry_date }}</p>
               {% endfor %}{% endif %}
             {% if not expiring_warranties and not expiring_insurances %}
-              <span class="d-block p-2 text-muted">No notifications</span>{% endif %}
+              <span class="d-block p-2 text-white">No notifications</span>{% endif %}
           </ul>
         </div>
       </div>
@@ -796,7 +785,7 @@ th:hover {
             </tr>
           {% else %}
             <tr>
-              <td colspan="2" class="text-center">No recent activities</td>
+              <td colspan="2" class="text-center text-white">No recent activities</td>
             </tr>
           {% endfor %}
         </tbody>
@@ -819,6 +808,17 @@ th:hover {
     <p id="eventRemarks"></p>
   </div>
 </div>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    {% for category, message in messages %}
+      <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+    {% endfor %}
+  {% endif %}
+{% endwith %}
 
 <style>
 /* Custom table theme */
@@ -1057,7 +1057,7 @@ window.onclick = function(event) {
               labels: {
                 color: "#ffffff",
                 boxWidth: 15,
-                padding: 20
+                padding: 5
               }
             }
           },

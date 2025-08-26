@@ -365,7 +365,7 @@ def dashboard():
     cur.execute("""
     SELECT COUNT(DISTINCT asset_id) 
     FROM maintenance
-    WHERE is_active = TRUE
+    WHERE is_active = TRUE And maintenance_type='Maintenance'
     """)
     assets_under_maintenance = cur.fetchone()[0]
 
@@ -418,6 +418,7 @@ def dashboard():
         FROM maintenance m
         LEFT JOIN asset p ON m.part_id = p.id
         left join asset a on m.asset_id = a.id
+        WHERE m.maintenance_type = 'Maintenance'
     """)
     maintenance_records = cur.fetchall()
 
@@ -1079,7 +1080,7 @@ def edit_user(user_id):
         flash("User not found.", "danger")
         cur.close()
         conn.close()
-        return redirect(url_for('manager_dashboard'))
+        return redirect(url_for('dashboard'))
 
     # Convert tuple to dict
     user = dict(zip([desc[0] for desc in cur.description], user))
@@ -1390,6 +1391,17 @@ WHERE a.id = %s;
     """, (asset_id,))
     maintenance_records = cur.fetchall()
 
+    # --- Fetch maintenance records ---
+    cur.execute("""
+        SELECT m.id, m.from_date, m.to_date, m.company, m.serviced_by, m.cost, m.maintenance_type, m.remarks, m.is_active,
+               p.asset_name AS part_name
+        FROM maintenance m
+        LEFT JOIN asset p ON m.part_id = p.id
+        WHERE m.asset_id = %s AND m.maintenance_type='Maintenance'
+        ORDER BY m.from_date DESC
+    """, (asset_id,))
+    ma_records = cur.fetchall()
+
     # --- Fetch monthly maintenance records ---
     cur.execute("""
         SELECT mm.id, mm.maintenance_date, mm.remarks, mm.serviced_by, mm.is_active,
@@ -1428,7 +1440,7 @@ WHERE a.id = %s;
     """, (asset_id,))
     files = cur.fetchall()
 
-    return render_template("asset_details.html", asset=asset, assignments=assignments, warranty=warranty,
+    return render_template("asset_details.html", asset=asset, assignments=assignments, warranty=warranty,ma_records=ma_records,
                            insurance_records=insurance_records, files=files, expiry_date=expiry_date, maintenance_records=maintenance_records, 
                            monthly_records=monthly_records, pending_requests=notifications["pending_requests"],pending_count=len(notifications["pending_requests"]),
         expiring_warranties=notifications["expiring_warranties"],expiring_insurances=notifications["expiring_insurances"],
@@ -1653,8 +1665,13 @@ def approve_request_page(request_id):
     cur.execute("SELECT * FROM warranty WHERE asset_id = %s", (asset_id,))
     warranty = cur.fetchone()
 
-    cur.execute("SELECT * FROM insurances WHERE asset_id = %s", (asset_id,))
-    insurance = cur.fetchone()
+    # Get insurance info
+    cur.execute("""
+    SELECT policy_number, provider_details, insured_value, start_date, end_date, insurance_premium
+    FROM insurances
+    WHERE asset_id = %s 
+    """, (asset_id,))
+    insurance_records = cur.fetchall()
 
     cur.execute("SELECT * FROM vendors WHERE asset_id = %s", (asset_id,))
     vendor = cur.fetchone()
@@ -1728,7 +1745,7 @@ def approve_request_page(request_id):
     return render_template('approve_requests.html',
                            request_data=request_data,
                            warranty=warranty,
-                           insurance=insurance,
+                           insurance_records=insurance_records,
                            vendor=vendor,
                            files=files,
                            assignments=assignments,
@@ -2052,7 +2069,7 @@ def add_asset():
         cur.close()
         conn.close()
         flash("Asset submitted for approval.", "success")
-        return redirect(url_for('view_assets'))
+        return redirect(url_for('dashboard'))
 
     return render_template('add_asset.html', categories=categories, users=users, subcategories=subcategories,pending_requests=notifications["pending_requests"],pending_count=len(notifications["pending_requests"]),
         expiring_warranties=notifications["expiring_warranties"],expiring_insurances=notifications["expiring_insurances"],
@@ -2113,7 +2130,7 @@ def extend_assignment(asset_id):
 
         cur.execute("""
             INSERT INTO assignments (asset_id, user_id, assigned_from, assigned_until, remarks, is_active)
-            VALUES (%s, %s, %s, %s, %s, FALSE)
+            VALUES (%s, %s, %s, %s, %s, TRUE)
             RETURNING id
         """, (asset_id, new_user_id, new_from, new_until, new_remarks))
         new_assignment_id = cur.fetchone()[0]
@@ -2171,7 +2188,7 @@ def add_insurance(asset_id):
             cur.execute("""
                 INSERT INTO insurances 
                     (asset_id, policy_number, provider_details, provider_contact, insured_value, insurance_premium, start_date, end_date, is_active)
-                VALUES (%s,%s,%s,%s,%s,%s,%s,%s, FALSE)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s, TRUE)
                 RETURNING id
             """, (asset_id, policy_number, provider_details, provider_contact, insured_value, premium, start_date, end_date))
             insurance_id = cur.fetchone()[0]
@@ -2191,7 +2208,7 @@ def add_insurance(asset_id):
                 VALUES (%s,%s,%s,%s,%s,%s,%s,%s, TRUE,%s)
             """, (asset_id, policy_number, provider_details, provider_contact, insured_value, premium, start_date, end_date, now))
 
-            flash("Insurance added successfully (no approval needed).", "success")
+            flash("Insurance added successfully.", "success")
 
         conn.commit()
         cur.close()
@@ -2442,6 +2459,11 @@ def add_maintenance():
                     INSERT INTO files (asset_id, file_name, file_path, uploaded_by, uploaded_at, is_active)
                     VALUES (%s,%s,%s,%s,%s,TRUE)
                 """, (part_id, filename, file_db_path, current_user.id, now))
+            
+            cur.execute("""
+            INSERT INTO requests (request_type, requested_by, asset_id, status)
+            VALUES ('add', %s, %s ,'Pending')
+        """, (current_user.id, part_id))
 
         # --- Insert Maintenance record ---
         cur.execute("""INSERT INTO maintenance (asset_id, part_id, from_date, to_date, company, serviced_by,
@@ -2456,11 +2478,6 @@ def add_maintenance():
             INSERT INTO requests (request_type, requested_by, asset_id, maintenance_id, status)
             VALUES ('maintenance', %s, %s, %s ,'Pending')
         """, (current_user.id, asset_id, maintenance_id))
-
-        cur.execute("""
-            INSERT INTO requests (request_type, requested_by, asset_id, status)
-            VALUES ('add', %s, %s ,'Pending')
-        """, (current_user.id, part_id))
 
         conn.commit()
         cur.close()
@@ -2573,12 +2590,17 @@ def add_monthly_maintenance(asset_id):
                     VALUES (%s,%s,%s,%s,%s,TRUE)
                 """, (part_id, filename, file_db_path, current_user.id, now))
 
+            cur.execute("""
+            INSERT INTO requests (request_type, requested_by, asset_id, status)
+            VALUES ('add', %s, %s ,'Pending')
+        """, (current_user.id, part_id))
+
         # --- Insert monthly maintenance as inactive/pending ---
         cur.execute("""
             INSERT INTO monthly_maintenance (
                 maintenance_id, asset_id, part_id, maintenance_date,
                 remarks, serviced_by, has_parts_involved, is_active
-            ) VALUES (%s,%s,%s,%s,%s,%s,%s,FALSE)
+            ) VALUES (%s,%s,%s,%s,%s,%s,%s,TRUE)
         """, (
             maintenance_id, asset_id, part_id, maintenance_date,
             remarks, serviced_by, has_parts_involved
@@ -2586,14 +2608,9 @@ def add_monthly_maintenance(asset_id):
 
         # --- Insert request for approval ---
         cur.execute("""
-            INSERT INTO requests (request_type, requested_by, asset_id, status,created_at)
-            VALUES ('maintenance', %s, %s, 'Pending',%s)
-        """, (current_user.id, asset_id,now))
-
-        cur.execute("""
             INSERT INTO requests (request_type, requested_by, asset_id, status)
-            VALUES ('add', %s, %s ,'Pending')
-        """, (current_user.id, part_id))
+            VALUES ('maintenance', %s, %s, 'Pending')
+        """, (current_user.id, asset_id))
 
         conn.commit()
         cur.close()
@@ -2615,6 +2632,34 @@ def add_monthly_maintenance(asset_id):
         open_maintenance=0,
         pending_approvals=0,
         recent_logs=[],subcategories=subcategories)
+
+@app.route("/update_asset_status/<int:asset_id>", methods=["POST"])
+@login_required
+def update_asset_status(asset_id):
+    if session.get("role") != "Asset Manager":
+        flash("Unauthorized action", "danger")
+        return redirect(url_for("view_asset_details", asset_id=asset_id))
+
+    is_active = request.form.get("is_active") == "true"
+    remarks = request.form.get("remarks", "")
+
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    cur.execute("""
+        UPDATE asset
+        SET is_active = %s,
+            remarks = %s,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = %s
+    """, (is_active, remarks, asset_id))
+
+    conn.commit()
+    cur.close()
+    conn.close()
+
+    flash("Asset status updated successfully!", "success")
+    return redirect(url_for("asset_details", asset_id=asset_id))
 
 @app.route('/')
 def index():

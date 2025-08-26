@@ -120,7 +120,7 @@
       {% if session.email %}
         <span class="fw-bold">{{ session.email }}</span>
       {% else %}
-        <span class="fw-bold">John Doe</span>
+        <span class="fw-bold">Welcome!</span>
       {% endif %}
     </div>
   </div>
@@ -190,16 +190,6 @@
     {% endif %}
   </div>
 
-  {% with messages = get_flashed_messages(with_categories=true) %}
-  {% if messages %}
-    {% for category, message in messages %}
-      <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
-        {{ message }}
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-      </div>
-    {% endfor %}
-  {% endif %}
-{% endwith %}
 
   <!-- Profile Container -->
   <div class="content mt-5 pt-3 p-5">
@@ -216,8 +206,8 @@
             ('PAN Number', user['pan_number']), ('Qualification', user['qualification']), ('Remarks', user['remarks']),
             ('Bank Name', user['bank_details'].get('bank_name', 'N/A')),
             ('Account Number', user['bank_details'].get('account_number', 'N/A')),
-            ('IFSC', user['bank_details'].get('ifsc', 'N/A')),
-            ('Branch', user['bank_details'].get('branch', 'N/A')),
+            ('Bank IFSC code', user['bank_details'].get('ifsc', 'N/A')),
+            ('Bank Branch', user['bank_details'].get('branch', 'N/A')),
             ('Account Type', user['bank_details'].get('account_type', 'N/A'))
           ] %}
           {% for label, value in user_details %}
@@ -309,6 +299,17 @@
           {% endif %}
         </div>
       </div>
+
+      {% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    {% for category, message in messages %}
+      <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+    {% endfor %}
+  {% endif %}
+{% endwith %}
 
       <!-- Right Column: Profile Photo -->
       <div class="col-md-4 d-flex flex-column align-items-center">
