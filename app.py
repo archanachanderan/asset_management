@@ -386,7 +386,7 @@ def dashboard():
 
     # Fetch asset details for modal
     cur.execute("""
-        SELECT a.id, a.tag, a.asset_name, c.name, a.is_active, a.purchase_date, a.purchase_cost
+        SELECT a.id, a.tag, a.asset_name, c.name, a.is_active, a.purchase_date, a.purchase_cost, a.remarks
         FROM asset a 
         JOIN category c ON c.id = a.category_id order by a.purchase_cost desc
     """)
@@ -394,7 +394,7 @@ def dashboard():
 
     # Fetch asset details for modal
     cur.execute("""
-        SELECT a.id, a.tag, a.asset_name, c.name, a.is_active, a.purchase_date, a.purchase_cost
+        SELECT a.id, a.tag, a.asset_name, c.name, a.is_active, a.purchase_date, a.purchase_cost, a.remarks
         FROM asset a 
         JOIN category c ON c.id = a.category_id 
         WHERE a.is_active = TRUE
@@ -403,7 +403,7 @@ def dashboard():
 
     # Fetch asset details for modal
     cur.execute("""
-        SELECT a.id, a.tag, a.asset_name, c.name, a.is_active, a.purchase_date, a.purchase_cost
+        SELECT a.id, a.tag, a.asset_name, c.name, a.is_active, a.purchase_date, a.purchase_cost, a.remarks
         FROM asset a 
         JOIN category c ON c.id = a.category_id 
         WHERE a.is_active = FALSE 
