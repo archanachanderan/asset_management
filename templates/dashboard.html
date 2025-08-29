@@ -395,7 +395,7 @@ th:hover {
             <div class="modal-header bg-primary d-flex justify-content-between align-items-center position-relative">
               <h5 class="modal-title text-white fw-bold fs-2 mb-0">Assets</h5>
               <div class="d-flex align-items-center" style="gap: 0.5rem; min-width: 300px;">
-              <input type="text" class="form-control asset-search-input" placeholder="Search assets...">
+              <input type="text" class="form-control asset-search-input" placeholder="Search...">
               <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
               </div>
             </div>
@@ -445,7 +445,7 @@ th:hover {
             <div class="modal-header d-flex justify-content-between align-items-center position-relative" style="background-color: orangered;">
               <h5 class="modal-title text-white fw-bold fs-2 mb-0">Total Assets Value</h5>
               <div class="d-flex align-items-center" style="gap: 0.5rem; min-width: 300px;">
-              <input type="text" class="form-control asset-search-input" placeholder="Search assets...">
+              <input type="text" class="form-control asset-search-input" placeholder="Search...">
               <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
               </div>
             </div>
@@ -493,7 +493,7 @@ th:hover {
             <div class="modal-header bg-warning d-flex justify-content-between align-items-center position-relative">
               <h5 class="modal-title text-white fw-bold fs-2 mb-0">Assets Active</h5>
               <div class="d-flex align-items-center" style="gap: 0.5rem; min-width: 300px;">
-              <input type="text" class="form-control asset-search-input" placeholder="Search assets...">
+              <input type="text" class="form-control asset-search-input" placeholder="Search...">
               <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
               </div>
             </div>
@@ -545,7 +545,7 @@ th:hover {
             <div class="modal-header bg-success d-flex justify-content-between align-items-center position-relative">
               <h5 class="modal-title text-white fw-bold fs-2 mb-0">Assets Inactive</h5>
               <div class="d-flex align-items-center" style="gap: 0.5rem; min-width: 300px;">
-              <input type="text" class="form-control asset-search-input" placeholder="Search assets...">
+              <input type="text" class="form-control asset-search-input" placeholder="Search...">
               <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
               </div>
             </div>
@@ -597,7 +597,7 @@ th:hover {
             <div class="modal-header d-flex justify-content-between align-items-center position-relative" style="background-color: purple;">
               <h5 class="modal-title text-white fw-bold fs-2 mb-0">Assets Under Maintenance</h5>
               <div class="d-flex align-items-center" style="gap: 0.5rem; min-width: 300px;">
-              <input type="text" class="form-control asset-search-input" placeholder="Search assets...">
+              <input type="text" class="form-control asset-search-input" placeholder="Search...">
               <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
               </div>
             </div>
@@ -610,7 +610,7 @@ th:hover {
                 </thead>
                 <tbody>
                   {% for r in maintenance_records %}
-                  <tr>
+                  <tr onclick="window.location='{{ url_for('asset_details', asset_id=r[9]) }}';" style="cursor:pointer;">
                     <td>{{ r[6] or 'N/A' }}</td>
                     <td>{{ r[1] or 'N/A' }}</td>
                     <td>{{ r[2] or 'N/A' }}</td>

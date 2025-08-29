@@ -223,6 +223,7 @@ def login():
 
         if user and check_password_hash(user.password , password):
             login_user(user)
+            session['user_id'] = user.id    
             session['email'] = email 
             session['role'] = user.roles[0] if user.roles else None  
 
@@ -260,7 +261,11 @@ def reset_password():
     if request.method == 'POST':
         new_password = request.form['password']
         confirm_password = request.form['confirm_password']
-        user_id = request.form.get('user_id') 
+        user_id = session.get('user_id')
+
+        if not user_id:
+            flash('Session expired. Please log in again.', 'danger')
+            return redirect(url_for('login'))
 
         if new_password != confirm_password:
             flash('Passwords do not match.', 'danger')
@@ -412,7 +417,7 @@ def dashboard():
 
     # --- Fetch maintenance records ---
     cur.execute("""
-        SELECT m.id, m.from_date, m.to_date, m.company, m.serviced_by, m.cost, m.maintenance_type, m.remarks, m.is_active,
+        SELECT m.id, m.from_date, m.to_date, m.company, m.serviced_by, m.cost, m.maintenance_type, m.remarks, m.is_active, m.asset_id, 
                a.asset_name as asset_name,
                p.asset_name AS part_name
         FROM maintenance m
@@ -919,13 +924,13 @@ def add_user():
             gender = request.form.get('gender')
             date_of_joining = request.form.get('date_of_joining')
 
-            bank_details = json.dumps({
-                "bank_name": request.form['bank_name'],
-                "account_number": request.form['account_number'],
-                "ifsc": request.form['ifsc'],
-                "branch": request.form.get('branch', ''),
-                "account_type": request.form.get('account_type', '')
-            })
+            bank_details = {
+                "bank_name": request.form.get("bank_name"),
+                "account_number": request.form.get("account_number"),
+                "ifsc": request.form.get("ifsc"),
+                "branch": request.form.get("branch"),
+                "account_type": request.form.get("account_type")
+            }
 
             aadhaar_number = request.form.get('aadhaar_number')
             pan_number = request.form.get('pan_number')
@@ -960,7 +965,7 @@ def add_user():
                 VALUES (%s, %s, %s, %s, %s, %s, TRUE, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 RETURNING id
             """, (name, email, password_hash, role_id, is_active, created_at, phone, address, 
-                  date_of_birth, gender, date_of_joining, bank_details, aadhaar_number, pan_number, 
+                  date_of_birth, gender, date_of_joining, json.dumps(bank_details), aadhaar_number, pan_number, 
                   salary, qualification, remarks))
             
             new_user_id = cur.fetchone()[0]
@@ -1024,11 +1029,11 @@ Salary: {salary}
 Qualification: {qualification}
 
 Bank Details:
-  Bank Name: {bank_details.get('bank_name', '')}
-  Account Number: {bank_details.get('account_number', '')}
-  IFSC: {bank_details.get('ifsc', '')}
-  Branch: {bank_details.get('branch', '')}
-  Account Type: {bank_details.get('account_type', '')}
+  Bank Name: {bank_details.get('bank_name','')}
+  Account Number: {bank_details.get('account_number','')}
+  IFSC: {bank_details.get('ifsc','')}
+  Branch: {bank_details.get('branch','')}
+  Account Type: {bank_details.get('account_type','')}
 
 Temporary Password: default123
 
