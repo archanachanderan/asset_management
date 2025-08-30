@@ -213,6 +213,8 @@
   max-width: 600px;
   position: relative;
   box-shadow: 0 5px 30px rgba(0,0,0,0.3);
+  overflow-y: auto;
+  max-height: 60vh;  
 }
 
 .close {
@@ -821,14 +823,7 @@ th:hover {
 <div id="eventModal" class="calendarbox">
   <div class="calendar-content">
     <span id="closeModal" class="close">&times;</span>
-    <h2 id="eventTitle"></h2>
-    <p id="eventTime"></p>
-    <p id="eventServiced"></p>
-    <p id="eventCompany"></p>
-    <p id="eventAsset"></p>
-    <p id="eventPart"></p>
-    <p id="eventCost"></p>
-    <p id="eventRemarks"></p>
+    <div id="eventDetails"></div>
   </div>
 </div>
 
@@ -984,73 +979,82 @@ th:hover {
   }
 
   function renderCalendar(month, year) {
-    calendarBody.innerHTML = '';
-    monthYear.textContent = `${months[month]} ${year}`;
+  calendarBody.innerHTML = '';
+  monthYear.textContent = `${months[month]} ${year}`;
 
-    let firstDay = new Date(year, month, 1).getDay();
-    let daysInMonth = new Date(year, month + 1, 0).getDate();
-    
-    let date = 1;
-    for (let i = 0; i < 6; i++) {
-      let row = document.createElement('tr');
-      for (let j = 0; j < 7; j++) {
-        let cell = document.createElement('td');
-        if (i === 0 && j < firstDay) {
-          cell.textContent = '';
-        } else if (date > daysInMonth) {
-          cell.textContent = '';
-        } else {
-          cell.textContent = date;
-          let fullDate = `${year}-${String(month+1).padStart(2,'0')}-${String(date).padStart(2,'0')}`;
+  let firstDay = new Date(year, month, 1).getDay();
+  let daysInMonth = new Date(year, month + 1, 0).getDate();
 
-          // Highlight today
-          if (date === today.getDate() && month === today.getMonth() && year === today.getFullYear()) {
-            cell.classList.add('today');
-          }
+  let date = 1;
+  for (let i = 0; i < 6; i++) {
+    let row = document.createElement('tr');
+    for (let j = 0; j < 7; j++) {
+      let cell = document.createElement('td');
+      if (i === 0 && j < firstDay) {
+        cell.textContent = '';
+      } else if (date > daysInMonth) {
+        cell.textContent = '';
+      } else {
+        cell.textContent = date;
+        let fullDate = `${year}-${String(month+1).padStart(2,'0')}-${String(date).padStart(2,'0')}`;
 
-          // Check events
-          events.forEach(ev => {
-            let evDate = ev.start.split("T")[0];
-            if (evDate === fullDate) {
-              cell.classList.add('event');
-              cell.style.backgroundColor = ev.color;
-              cell.title = ev.title;
-
-              // Show details on click
-              cell.addEventListener("click", () => {
-                cell.addEventListener("click", () => {
-  document.getElementById('eventTitle').textContent = ev.title;
-  document.getElementById('eventTime').textContent =`Start: ${ev.start}${ev.end ? `, End: ${ev.end}` : ""}`;
-  document.getElementById('eventServiced').textContent =`Serviced By: ${ev.serviced_by || "None"}`;
-  document.getElementById('eventAsset').textContent = `Asset: ${ev.asset_name || "N/A"}`;
-  document.getElementById('eventPart').textContent = `Part: ${ev.part_name || "N/A"}`;
-  document.getElementById('eventCompany').textContent = `Company: ${ev.company || "N/A"}`;
-  document.getElementById('eventRemarks').textContent = `Remarks: ${ev.remarks || "None"}`;
-  document.getElementById('eventCost').textContent = `Cost: ${ev.cost || "N/A"}`;
-  document.getElementById('eventModal').style.display = "block";
-});
-
-// Add modal close logic outside renderCalendar, only once:
-document.getElementById('closeModal').onclick = function() {
-  document.getElementById('eventModal').style.display = "none";
-};
-
-// To close modal when clicking outside modal-content
-window.onclick = function(event) {
-  const modal = document.getElementById('eventModal');
-  if (event.target === modal) modal.style.display = "none";
-};
-
-              });
-            }
-          });
-          date++;
+        // Highlight today
+        if (date === today.getDate() && month === today.getMonth() && year === today.getFullYear()) {
+          cell.classList.add('today');
         }
-        row.appendChild(cell);
+
+        // Get all events for this date
+        let dayEvents = events.filter(ev => ev.start.split("T")[0] === fullDate);
+
+        if (dayEvents.length > 0) {
+          cell.classList.add('event');
+          // If only one event, use its color; if many, use neutral
+          cell.style.backgroundColor = dayEvents.length === 1 ? dayEvents[0].color : "yellow";
+          cell.title = dayEvents.map(ev => ev.title).join(", ");
+
+          // Show details on click
+          cell.addEventListener("click", () => {
+            // Clear modal content first
+            const detailsContainer = document.getElementById('eventDetails');
+            detailsContainer.innerHTML = "";
+
+            dayEvents.forEach(ev => {
+              let block = document.createElement("div");
+              block.classList.add("event-block");
+              block.innerHTML = `
+                <h2><b><center>${ev.title}</center></b></h2><hr>
+                <p><b>Start:</b> ${ev.start}${ev.end ? `, <b>End:</b> ${ev.end}` : ""}</p>
+                <p><b>Serviced By:</b> ${ev.serviced_by || "None"}</p>
+                <p><b>Asset:</b> ${ev.asset_name || "N/A"}</p>
+                <p><b>Part:</b> ${ev.part_name || "N/A"}</p>
+                <p><b>Company:</b> ${ev.company || "N/A"}</p>
+                <p><b>Remarks:</b> ${ev.remarks || "None"}</p>
+                <p><b>Cost:</b> ${ev.cost || "N/A"}</p>
+                <hr>
+              `;
+              detailsContainer.appendChild(block);
+            });
+
+            document.getElementById('eventModal').style.display = "block";
+          });
+        }
+
+        date++;
       }
-      calendarBody.appendChild(row);
+      row.appendChild(cell);
     }
+    calendarBody.appendChild(row);
   }
+
+  // Add modal close logic once
+  document.getElementById('closeModal').onclick = function() {
+    document.getElementById('eventModal').style.display = "none";
+  };
+  window.onclick = function(event) {
+    const modal = document.getElementById('eventModal');
+    if (event.target === modal) modal.style.display = "none";
+  };
+}
 
   prev.addEventListener('click', () => {
     currentMonth--;
