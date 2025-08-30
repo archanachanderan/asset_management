@@ -683,6 +683,21 @@ th:hover {
             <canvas id="maintenanceLine"></canvas>
           </div>
         </div>
+        <!-- Maintenance Details Modal -->
+<div class="modal fade" id="maintenanceModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content bg-white text-dark border border-dark rounded">
+      <div class="modal-header">
+        <h5 class="modal-title">Maintenance Details</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="maintenanceModalBody">
+        <!-- Data from JS will appear here -->
+      </div>
+    </div>
+  </div>
+</div>
+
       <div class="card shadow-sm border-0 text-white flex-grow-1 mt-3" style="background-color: #1c1c84; border-radius: 0.5rem; margin-left: 20px;">
         <div class="card-header d-flex justify-content-between"><span>Quick Actions</span></div>
         <div class="card-body overflow-auto">
@@ -863,6 +878,90 @@ th:hover {
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
+  let maintenanceChart;
+
+  fetch("/api/maintenance_trend")
+    .then(res => res.json())
+    .then(data => {
+      const ctx = document.getElementById("maintenanceLine");
+      maintenanceChart = new Chart(ctx, {
+        type: "line",
+        data: {
+          labels: data.labels,   // months
+          datasets: [{
+            label: "Maintenance Cost",
+            data: data.data,     // cost values
+            borderColor: "#ffffff",
+            backgroundColor: "rgba(255,255,255,0.2)",
+            tension: 0.3,
+            fill: true,
+            pointBackgroundColor: "#007bff",
+            pointRadius: 5,
+            pointHoverBackgroundColor: "#D3D3D3", // yellow dot on hover
+            pointHoverBorderColor: "#000000",     // black border hover
+            pointHoverBorderWidth: 2,
+            pointHoverRadius: 10,
+            pointHitRadius: 15
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: { 
+            legend: { position: "top", align: "end", labels: { color: "#ffffff" } 
+          }, 
+          tooltip: {
+              backgroundColor: "white",   // black box
+              titleColor: "black",        // white title
+              bodyColor: "black",   
+              borderColor: "#000000",  
+              borderWidth: 2,
+              padding: 10,
+              cornerRadius: 8,
+              displayColors: false,       // removes color box
+              callbacks: {
+                label: function(ctx) {
+                  return `₹${ctx.raw}`;   // show value with ₹
+                }
+              }
+            }
+          },
+          scales: {
+            y: { 
+              beginAtZero: true, 
+              title: { display: true, text: "Cost (₹)", color: "#ffffff" }, 
+              ticks: { color: "#ffffff" } 
+            },
+            x: { 
+              beginAtZero: true, 
+              title: { display: true, text: "Month", color: "#ffffff" }, 
+              ticks: { color: "#ffffff" } 
+            }
+          },
+          onClick: (evt) => {
+            const points = maintenanceChart.getElementsAtEventForMode(evt, "nearest", { intersect: true }, true);
+            if (points.length) {
+              const firstPoint = points[0];
+              const month = maintenanceChart.data.labels[firstPoint.index];
+              
+              // Fetch real DB details for that month
+              fetch(`/api/maintenance_details/${month}`)
+                .then(res => res.json())
+                .then(details => {
+                  let html = `<h5>Maintenance Details for ${month}</h5><ul>`;
+                  details.forEach(d => {
+                    html += `<li><b>Asset:</b> ${d.asset_name} | <b>Company:</b> ${d.company} | <b>Cost:</b> ₹${d.cost} | <b>Remarks:</b> ${d.remarks}</li>`;
+                  });
+                  html += `</ul>`;
+                  document.getElementById("maintenanceModalBody").innerHTML = html;
+                  new bootstrap.Modal(document.getElementById("maintenanceModal")).show();
+                });
+            }
+          }
+        }
+      });
+    });
+</script>
+<script>
   const monthYear = document.getElementById('monthYear');
   const calendarBody = document.getElementById('calendarBody');
   const prev = document.getElementById('prev');
@@ -992,45 +1091,6 @@ window.onclick = function(event) {
       notifDropdown.classList.remove('active');
     }
   });
-
-  // Maintenance Line Chart
-  fetch("/api/maintenance_trend")
-    .then(res => res.json())
-    .then(data => {
-      new Chart(document.getElementById("maintenanceLine"), {
-        type: "line",
-        data: {
-          labels: data.labels,
-          datasets: [{
-            label: "Maintenance Cost",
-            data: data.data,
-            borderColor: "#ffffff", 
-            backgroundColor: "rgba(255,255,255,0.2)",
-            tension: 0.3,
-            fill: true,
-            pointBackgroundColor: "#007bff",
-            pointRadius: 4
-          }]
-        },
-        options: {
-          responsive: true,
-          plugins: { 
-            legend: { position: "top", align: "end", labels: { color: "#ffffff" } } 
-          },
-          scales: {
-            y: { 
-              beginAtZero: true, 
-              title: { display: true, text: "Cost (₹)", color: "#ffffff" }, 
-              ticks: { color: "#ffffff" } 
-            },
-            x: { 
-              title: { display: true, text: "Month", color: "#ffffff" }, 
-              ticks: { color: "#ffffff" } 
-            }
-          }
-        }
-      });
-    });
 
   // Category Pie Chart
   fetch("/api/category_distribution")

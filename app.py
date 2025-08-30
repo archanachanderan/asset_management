@@ -250,7 +250,7 @@ def login():
                 flash('Unauthorized role', 'danger')
                 return redirect(url_for('login')) 
         else:
-            flash('Invalid credentials or role', 'danger')
+            flash('Invalid credentials', 'danger')
             return redirect(url_for('login', animate='true'))
 
     animate = request.args.get('animate') == 'true'
@@ -449,6 +449,27 @@ def dashboard():
         pending_assets=pending_assets,
         assets_under_maintenance=assets_under_maintenance, maintenance_records=maintenance_records, notifications=notifications, activities=activities
     )
+
+@app.route("/api/maintenance_details/<string:month>")
+def maintenance_details(month):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT a.asset_name, m.company, m.cost, m.remarks
+        FROM maintenance m
+        JOIN asset a ON m.asset_id = a.id
+        WHERE TO_CHAR(m.from_date, 'YYYY-MM') = %s
+        ORDER BY m.cost DESC
+    """, (month,))
+    records = cur.fetchall()
+    cur.close()
+    conn.close()
+
+    details = [
+        {"asset_name": r[0], "company": r[1], "cost": r[2], "remarks": r[3]}
+        for r in records
+    ]
+    return jsonify(details)
 
 @app.route("/api/assets_by_lifecycle")
 def assets_by_lifecycle():
@@ -2641,9 +2662,9 @@ def add_monthly_maintenance(asset_id):
 @app.route("/update_asset_status/<int:asset_id>", methods=["POST"])
 @login_required
 def update_asset_status(asset_id):
-    if session.get("role") != "Asset Manager":
+    if session.get("role") != "Asset Entry Officer":
         flash("Unauthorized action", "danger")
-        return redirect(url_for("view_asset_details", asset_id=asset_id))
+        return redirect(url_for("asset_details", asset_id=asset_id))
 
     is_active = request.form.get("is_active") == "true"
     remarks = request.form.get("remarks", "")
@@ -2658,6 +2679,11 @@ def update_asset_status(asset_id):
             updated_at = CURRENT_TIMESTAMP
         WHERE id = %s
     """, (is_active, remarks, asset_id))
+
+    cur.execute("""
+        INSERT INTO requests (request_type, requested_by, asset_id, remarks, status, is_active)
+        VALUES (%s, %s, %s, %s, %s, %s)
+    """, ("edit", current_user.id, asset_id, remarks, "Pending", is_active))
 
     conn.commit()
     cur.close()

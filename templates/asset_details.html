@@ -389,7 +389,7 @@
     {% endif %}
   </div>
 
-  {% if session.role == 'Asset Manager' %}
+  {% if session.role == 'Asset Entry Officer' %}
 <div class="card p-3 mt-3">
   <h6 class="text-danger">Update Asset Status</h6>
   <form method="POST" action="{{ url_for('update_asset_status', asset_id=asset[0]) }}">
