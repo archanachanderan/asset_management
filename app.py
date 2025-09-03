@@ -142,9 +142,12 @@ def forgot_password():
             return render_template('login.html')
         else:
             flash('Email not found.', 'danger')
-            return render_template('login.html')
-    cur.close()
-    conn.close()
+
+        cur.close()
+        conn.close()
+        return render_template('login.html')
+
+    # For GET request → just show form
     return render_template('forgot_password.html')
 
 # --- Change password ---
