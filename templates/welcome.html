@@ -9,41 +9,12 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
   <link href="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.css" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
-  <style>
-    /* Smooth hover scale and shadow */
-    .transition-card {
-      transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
-    }
-    .transition-card:hover {
-      transform: translateY(-5px);
-      box-shadow: 0 8px 20px rgba(0,0,0,0.1);
-    }
-  </style>
 </head>
 
 <body class="bg-dark">
-  <!-- Toast Container -->
-<div id="toast-container" style="
-    display: none;
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    background-color: #198754; /* Bootstrap success green */
-    color: white;
-    padding: 15px 25px;
-    border-radius: 5px;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
-    font-weight: 600;
-    z-index: 1050;
-    opacity: 0;
-    transition: opacity 0.5s ease-in-out;
-">
-  <span id="toast-message"></span>
-</div>
-
-  <!-- Navbar -->
+  <div id="toast-container"><span id="toast-message"></span></div>
   <header>
-    <nav class="navbar navbar-expand-lg navbar-light bg-white fixed-top shadow py-2" style="font-family: 'Times New Roman', Times, serif;">
+    <nav class="navbar navbar-expand-lg navbar-light bg-white fixed-top shadow py-2" style="font-family: 'Times New Roman', Times, serif; margin-left: 0;">
       <div class="container-fluid">
         <p class="navbar-brand text-danger fw-bold fs-2 my-0 d-flex align-items-center" style="font-family: 'Times New Roman', Times, serif;">
           <img src="{{ url_for('static', filename='images/logo.jpg') }}" alt="Logo" height="40" class="me-2">
@@ -59,36 +30,20 @@
     </nav>
   </header>
 
-  <!-- Hero Section -->
   <section class="hero-section blur-sides" style="margin-top: 80px;">
   <div class="hero-overlay"></div>
-  <div class="hero-text">
-    <h1 class="display-3 fw-bold animate__animated animate__fadeInDown">Precision Engineering</h1>
-    <p class="lead animate__animated animate__fadeInUp animate__delay-1s">
-      Manufacturing of Oil Filter Caps & Press Components
-    </p>
-  </div>
-  <!-- Prev/Next buttons -->
+  <div class="hero-text"><h1 class="display-3 fw-bold animate__animated animate__fadeInDown">Precision Engineering</h1><p class="lead animate__animated animate__fadeInUp animate__delay-1s">Manufacturing of Oil Filter Caps & Press Components</p></div>
   <button class="hero-prev">&#10094;</button>
   <button class="hero-next">&#10095;</button>
-
-  <!-- Dots -->
   <div class="hero-dots"></div>
-</section>
+  </section>
 
-  <!-- Welcome Text -->
   <div class="text-center py-3 bg-secondary">
     <h2 class="display-4 fw-bold animate__animated animate__fadeIn animate__delay-1s text-white" style="font-family: 'Times New Roman', Times, serif;">WELCOME</h2>
     <h2 class="display-4 fw-bold animate__animated animate__fadeIn animate__delay-1s text-white" style="font-family: 'Times New Roman', Times, serif;">TO</h2>
     <h2 class="display-4 fw-bold animate__animated animate__fadeIn animate__delay-1s text-white" style="font-family: 'Times New Roman', Times, serif;">SREE VENKATESHWARA ENTERPRISES</h2>
-    <!--
-    <p class="lead fw-bold" data-aos="fade-up" data-aos-delay="500">
-      Manufacturing of Oil Filter Caps & Press Components
-    </p>
-    -->
-
     <div class="d-flex justify-content-center gap-5 flex-wrap py-5">
-      <!-- About -->
+  
       <div class="col-12 col-md-3">
         <a href="{{ url_for('about_us') }}" class="text-decoration-none">
           <div class="card shadow-sm border-0 rounded-4 h-100 text-center p-4 transition-card">
@@ -100,7 +55,6 @@
         </a>
       </div>
 
-      <!-- Products -->
       <div class="col-12 col-md-3">
         <a href="{{ url_for('product') }}" class="text-decoration-none">
           <div class="card shadow-sm border-0 rounded-4 h-100 text-center p-4 transition-card">
@@ -113,7 +67,6 @@
         </a>
       </div>
 
-      <!-- Contact -->
       <div class="col-12 col-md-3">
         <a href="{{ url_for('contact_us') }}" class="text-decoration-none">
           <div class="card shadow-sm border-0 rounded-4 h-100 text-center p-4 transition-card">
@@ -128,7 +81,6 @@
     </div>
   </div>
 
-  <!-- Footer -->
   <footer class="bg-dark text-white py-4">
     <div class="container">
       <div class="row">
@@ -147,50 +99,46 @@
           </p>
         </div>
         <div class="col-md-3 text-start">
-    <h5 class="fw-bold">Send Us A Message</h5>
-    <form action="/contact" method="POST" class="needs-validation" novalidate>
-      
-        <!-- Name -->
-        <div class="mb-2">
+          <h5 class="fw-bold">Send Us A Message</h5>
+          <form action="/contact" method="POST" class="needs-validation" novalidate>
+
+          <div class="mb-2">
             <input type="text" name="name" class="form-control" placeholder="Enter your full name" required>
             <div class="invalid-feedback">Please enter your name.</div>
-        </div>
+          </div>
 
-        <!-- Email -->
-        <div class="mb-2">
+          <div class="mb-2">
             <input type="email" name="email" class="form-control" placeholder="Enter your email address" required>
             <div class="invalid-feedback">Please enter a valid email address.</div>
-        </div>
+          </div>
 
-        <div class="mb-2">
+          <div class="mb-2">
             <input type="phone" name="phone" class="form-control" placeholder="Enter your phone number" required>
             <div class="invalid-feedback">Please enter a valid phone number.</div>
-        </div>
-        
-        <!-- Message -->
-        <div class="mb-2">
+          </div>
+    
+          <div class="mb-2">
             <textarea name="message" rows="3" class="form-control" placeholder="Write your message here..." required></textarea>
             <div class="invalid-feedback">Please enter your message.</div>
+          </div>
+
+          <button type="submit" class="btn btn-danger px-4 fw-semibold">Send Message</button>
+          </form>
         </div>
-        
-        <!-- Submit -->
-        <button type="submit" class="btn btn-danger px-4 fw-semibold">Send Message</button>
-    </form>
-</div>
-
-
+      
       </div>
       <hr class="border-light">
       <p class="mb-0 text-center">© 2025 Sree Venkateshwara Enterprises | All Rights Reserved</p>
     </div>
   </footer>
 
-  <script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.js"></script>
+<script>
 document.addEventListener("DOMContentLoaded", function () {
   const hero = document.querySelector(".hero-section");
   const slidesContainer = document.createElement("div");
   slidesContainer.classList.add("hero-slides");
-  hero.insertBefore(slidesContainer, hero.querySelector(".hero-text")); // insert behind text
+  hero.insertBefore(slidesContainer, hero.querySelector(".hero-text")); 
 
   const prevBtn = document.querySelector(".hero-prev");
   const nextBtn = document.querySelector(".hero-next");
@@ -205,7 +153,6 @@ document.addEventListener("DOMContentLoaded", function () {
   let index = 0;
   let slideInterval;
 
-  // Create slides
   images.forEach(src => {
     const img = document.createElement("img");
     img.src = src;
@@ -219,7 +166,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
   const slides = slidesContainer.querySelectorAll("img");
 
-  // Create dots dynamically
   images.forEach((_, i) => {
     const dot = document.createElement("span");
     dot.addEventListener("click", () => goToSlide(i));
@@ -258,59 +204,58 @@ document.addEventListener("DOMContentLoaded", function () {
     startAutoSlide();
   }
 
-  prevBtn.addEventListener("click", () => { prevSlide(); resetInterval(); });
-  nextBtn.addEventListener("click", () => { nextSlide(); resetInterval(); });
+  prevBtn.addEventListener("click", () => {
+    prevSlide();
+    resetInterval();
+  });
+  nextBtn.addEventListener("click", () => {
+    nextSlide();
+    resetInterval();
+  });
 
-  // Init
   showSlide(index);
   startAutoSlide();
 });
+
+function resizeIframe(iframe) {
+  try {
+    const contentHeight = iframe.contentWindow.document.body.scrollHeight;
+    iframe.style.height = contentHeight + "px";
+  } catch (e) {
+    console.warn("Iframe content could not be resized:", e);
+  }
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  document.querySelectorAll("iframe").forEach(iframe => {
+    iframe.addEventListener("load", () => resizeIframe(iframe));
+  });
+});
+
+AOS.init({
+  once: true,
+  duration: 2000 
+});
+
+document.addEventListener("DOMContentLoaded", function() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const msg = urlParams.get("msg");
+
+  if (msg) {
+    const toastContainer = document.getElementById("toast-container");
+    const toastMessage = document.getElementById("toast-message");
+
+    toastMessage.textContent = msg;
+    toastContainer.style.display = "block";
+    toastContainer.style.opacity = "1";
+
+    setTimeout(() => {
+      toastContainer.style.opacity = "0";
+      setTimeout(() => toastContainer.style.display = "none", 500);
+    }, 10000);
+  }
+});
 </script>
-  <script>
-    function resizeIframe(iframe) {
-      try {
-        const contentHeight = iframe.contentWindow.document.body.scrollHeight;
-        iframe.style.height = contentHeight + "px";
-      } catch (e) {
-        console.warn("Iframe content could not be resized:", e);
-      }
-    }
 
-    document.addEventListener("DOMContentLoaded", () => {
-      document.querySelectorAll("iframe").forEach(iframe => {
-        iframe.addEventListener("load", () => resizeIframe(iframe));
-      });
-    });
-  </script>
-
-  <!-- AOS Animation Library -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.js"></script>
-  <script>
-    AOS.init({
-      once: true,
-      duration: 1200 // animation duration in ms
-    });
-  </script>
-  <script>
-    document.addEventListener("DOMContentLoaded", function() {
-        const urlParams = new URLSearchParams(window.location.search);
-        const msg = urlParams.get("msg");
-
-        if (msg) {
-            const toastContainer = document.getElementById("toast-container");
-            const toastMessage = document.getElementById("toast-message");
-
-            toastMessage.textContent = msg;
-            toastContainer.style.display = "block";
-            toastContainer.style.opacity = "1";
-
-            // Auto-hide after 3 seconds with fade-out
-            setTimeout(() => {
-                toastContainer.style.opacity = "0";
-                setTimeout(() => toastContainer.style.display = "none", 500);
-            }, 3000);
-        }
-    });
-</script>
 </body>
 </html>

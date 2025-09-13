@@ -3,140 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Add Maintenance/Repair | SVE</title>
+<title>Add Maintenance or Repair | SVE</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<style>
-  .sidebar {
-    position: fixed;
-    top: 0;
-    left: 0;
-    height: 100vh;
-    width: 80px;
-    background: #fff;
-    box-shadow: 2px 0 5px rgba(0,0,0,0.1);
-    transition: width 0.3s;
-    overflow: hidden;
-    z-index: 1000;
-  }
-  .sidebar.expanded { width: 250px; }
-  .sidebar .nav-link {
-    display: flex;
-    align-items: center;
-    padding: 15px;
-    color: #dc3545;
-    white-space: nowrap;
-    position: relative;
-  }
-  .sidebar .nav-link i { min-width: 30px; font-size: 1.2rem; }
-  .sidebar .nav-link span { margin-left: 10px; transition: opacity 0.3s; opacity: 0; }
-  .sidebar.expanded .nav-link span { opacity: 1; }
-  .sidebar .nav-link:hover { background: #f5f5f5; border-radius: 8px; }
-
-  .sidebar.expanded #user-email { display: block !important; }
-
-  /* Navbar */
-  .navbar { margin-left: 80px; transition: margin-left 0.3s; }
-  .sidebar.expanded ~ .navbar { margin-left: 250px; }
-
-  /* Content */
-  .content { margin-left: 50px; padding: 20px; transition: margin-left 0.3s; margin-right: 0;}
-  .sidebar.expanded ~ .content { margin-left: 250px; }
-
-  /* Hamburger */
-  .hamburger { font-size: 1.5rem; cursor: pointer; }
-
-  /* Cards */
-  .card { border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-
-    /* Notifications */
-  .notification-badge {
-    position: absolute;
-    top: 0;
-    right: -5px;
-    font-size: 0.6rem;
-    background: red;
-    color: #fff;
-    border-radius: 50%;
-    padding: 2px 5px;
-  }
-  .custom-dropdown {
-      display: none;
-      position: fixed;
-      top: 70px; /* just below navbar */
-      right: 20px;
-      z-index: 2000;
-      background: white;
-      border: 1px solid #ccc;
-      border-radius: 8px;
-      box-shadow: 0 4px 8px rgba(0,0,0,0.15);
-      min-width: 250px;
-      transition: all 0.3s ease;
-      opacity: 0;
-      transform: translateY(-10px);
-      overflow-y: auto;
-      height: 100px;
-    }
-    .custom-dropdown.active {
-      display: block;
-      opacity: 1;
-      transform: translateY(0);
-    }
-    .custom-dropdown a {
-      display: block;
-      padding: 10px;
-      color: #333;
-      text-decoration: none;
-    }
-    .custom-dropdown a:hover {
-      background: #f5f5f5;
-    }
-    body {
-      min-height: 100vh;
-      padding: 20px;
-    }
-
-    .card-custom {
-      height: 170px;
-      position: relative;
-      overflow: hidden;
-      border-radius: 20px;
-      box-shadow: 0 8px 18px rgba(0, 0, 0, 0.3);
-      transition: transform 0.3s ease, box-shadow 0.3s ease;
-    }
-
-    .card-custom:hover {
-      transform: translateY(-10px) scale(1.03);
-      box-shadow: 0 15px 25px rgba(0, 0, 0, 0.5);
-    }
-
-    .card-custom i.bg-icon {
-      position: absolute;
-      bottom: -20px;
-      right: -10px;
-      font-size: 110px;
-    }
-
-    .card-title {
-      font-weight: bold;
-      font-size: 1.1rem;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .card-title i {
-      font-size: 1.3rem;
-    }
-
-    .flex-card {
-      flex: 1 1 calc(20% - 1rem);
-      min-width: 220px;
-    }
-</style>
 </head>
 <body>
 
@@ -182,38 +55,38 @@
   </div>
 </nav>
 
-  <div id="notifDropdown" class="custom-dropdown">
+<div id="notifDropdown" class="custom-dropdown">
+  {% if session.role == 'Asset Manager' %}
+  {% if pending_requests %}
+    {% for req in pending_requests %}
+      <a href="{{ url_for('approve_request_page', request_id=req.id) }}">
+        Request to {{ req.request_type }} by {{ req.request_by }}
+      </a>
+    {% endfor %}
+  {% endif %}
+  {% endif %}
+  {% if expiring_warranties %}
+    <hr class="my-1">
+    {% for warranty in expiring_warranties %}
+      <a href="#">Warranty expiring for {{ warranty.asset_name }} on {{ warranty.expiry_date }}</a>
+    {% endfor %}
+  {% endif %}
+  {% if expiring_insurances %}
+    <hr class="my-1">
+    {% for insurance in expiring_insurances %}
+      <a href="#">Insurance expiring for {{ insurance.asset_name }} on {{ insurance.expiry_date }}</a>
+    {% endfor %}
+  {% endif %}
+  {% if not pending_requests and not expiring_warranties and not expiring_insurances %}
+    <span class="d-block p-2 text-muted">No notifications</span>
+  {% else %}
+    <hr class="my-1">
     {% if session.role == 'Asset Manager' %}
-    {% if pending_requests %}
-      {% for req in pending_requests %}
-        <a href="{{ url_for('approve_request_page', request_id=req.id) }}">
-          Request to {{ req.request_type }} by {{ req.request_by }}
-        </a>
-      {% endfor %}
+    <a href="{{ url_for('view_requests') }}" class="text-primary">View All Pending Requests</a>
     {% endif %}
-    {% endif %}
-    {% if expiring_warranties %}
-      <hr class="my-1">
-      {% for warranty in expiring_warranties %}
-        <a href="#">Warranty expiring for {{ warranty.asset_name }} on {{ warranty.expiry_date }}</a>
-      {% endfor %}
-    {% endif %}
-    {% if expiring_insurances %}
-      <hr class="my-1">
-      {% for insurance in expiring_insurances %}
-        <a href="#">Insurance expiring for {{ insurance.asset_name }} on {{ insurance.expiry_date }}</a>
-      {% endfor %}
-    {% endif %}
-    {% if not pending_requests and not expiring_warranties and not expiring_insurances %}
-      <span class="d-block p-2 text-muted">No notifications</span>
-    {% else %}
-      <hr class="my-1">
-      {% if session.role == 'Asset Manager' %}
-      <a href="{{ url_for('view_requests') }}" class="text-primary">View All Pending Requests</a>
-      {% endif %}
-      <a href="{{ url_for('view_notifications') }}" class="text-primary">View All Notifications</a>
-    {% endif %}
-  </div>
+    <a href="{{ url_for('view_notifications') }}" class="text-primary">View All Notifications</a>
+  {% endif %}
+</div>
 
 {% with messages = get_flashed_messages(with_categories=true) %}
   {% if messages %}
@@ -232,17 +105,16 @@
       <h2 class="mb-2 text-danger text-center">Add Maintenance / Repair</h2>
 
       <form method="POST" enctype="multipart/form-data">
-        
-        <!-- Asset selection -->
         <div class="row">
-            <div class="col-md-3 mb-3">
-          <label for="asset_id" class="form-label fw-bold">Asset</label>
-          <select name="asset_id" id="asset_id" class="form-select" required>
-            <option value="">Select Asset</option>
-            {% for asset in assets %}
-            <option value="{{ asset[0] }}">{{ asset[1] }}</option>
-            {% endfor %}
-          </select></div>
+          <div class="col-md-3 mb-3">
+            <label for="asset_id" class="form-label fw-bold">Asset</label>
+            <select name="asset_id" id="asset_id" class="form-select" required>
+              <option value="">Select Asset</option>
+              {% for asset in assets %}
+              <option value="{{ asset[0] }}">{{ asset[1] }}</option>
+              {% endfor %}
+            </select>
+          </div>
           <div class="col-md-3 mb-3">
             <label for="from_date" class="form-label fw-bold">From Date</label>
             <input type="date" name="from_date" class="form-control" required>
@@ -255,8 +127,9 @@
             <label for="company" class="form-label fw-bold">Company</label>
             <input type="text" name="company" class="form-control">
           </div>
-          </div>
-         <div class="row">
+        </div>
+
+        <div class="row">
           <div class="col-md-3 mb-3">
             <label for="serviced_by" class="form-label fw-bold">Serviced By</label>
             <input type="text" name="serviced_by" class="form-control">
@@ -272,33 +145,28 @@
             <label for="cost" class="form-label fw-bold">Cost</label>
             <input type="number" name="cost" class="form-control" step="1000">
           </div>
-        <div class="col-md-3 mb-3">
-          <label for="remarks" class="form-label fw-bold">Remarks</label>
-          <textarea name="remarks" class="form-control"></textarea>
-        </div>
+          <div class="col-md-3 mb-3">
+            <label for="remarks" class="form-label fw-bold">Remarks</label>
+            <textarea name="remarks" class="form-control"></textarea>
+          </div>
         </div>
 
-        <!-- Parts involved checkbox -->
         <div class="form-check mb-3">
           <input type="checkbox" class="form-check-input" id="has_parts_involved" name="has_parts_involved">
           <label class="form-check-label fw-bold" for="has_parts_involved">Parts Involved</label>
         </div>
 
-        <!-- Part details (hidden by default) -->
         <div id="part_details" style="display:none; border: 1px solid #ccc; padding: 15px; border-radius: 5px;">
-            <h5>Part Details</h5>
-
-            <div class="row">
-        <div class="col-md-3 mb-3">
-                <label for="part_name" class="form-label">Part Name</label>
-                <input type="text" name="part_name" id="part_name" class="form-control">
-            </div>
-
+          <h5>Part Details</h5>
+          <div class="row">
             <div class="col-md-3 mb-3">
-                <label for="part_description" class="form-label">Description</label>
-                <textarea name="part_description" id="part_description" class="form-control" rows="1"></textarea>
+              <label for="part_name" class="form-label">Part Name</label>
+              <input type="text" name="part_name" id="part_name" class="form-control">
             </div>
-
+            <div class="col-md-3 mb-3">
+              <label for="part_description" class="form-label">Description</label>
+              <textarea name="part_description" id="part_description" class="form-control" rows="1"></textarea>
+            </div>
             <div class="col-md-3 mb-3">
               <label class="form-label fw-bold">Category</label>
               <select name="part_category_id" class="form-select">
@@ -316,115 +184,111 @@
                 <option value="{{ sub[0] }}" data-parent="{{ sub[2] }}">{{ sub[1] }}</option>
                 {% endfor %}
               </select>
-            </div></div>
-         
-            <div class="row">
-            <div class="col-md-3 mb-3">
-                <label for="part_purchase_date" class="form-label">Purchase Date</label>
-                <input type="date" name="part_purchase_date" id="part_purchase_date" class="form-control">
             </div>
+          </div>
 
+          <div class="row">
             <div class="col-md-3 mb-3">
-                <label for="part_purchase_cost" class="form-label">Purchase Cost</label>
-                <input type="number" step="0.01" name="part_purchase_cost" id="part_purchase_cost" class="form-control">
+              <label for="part_purchase_date" class="form-label">Purchase Date</label>
+              <input type="date" name="part_purchase_date" id="part_purchase_date" class="form-control">
             </div>
+            <div class="col-md-3 mb-3">
+              <label for="part_purchase_cost" class="form-label">Purchase Cost</label>
+              <input type="number" step="0.01" name="part_purchase_cost" id="part_purchase_cost" class="form-control">
+            </div>
+            <div class="col-md-3 mb-3">
+              <label for="part_remarks" class="form-label">Remarks</label>
+              <textarea name="part_remarks" id="part_remarks" class="form-control" rows="1"></textarea>
+            </div>
+            <div class="col-md-3 mb-3">
+              <label for="warranty_years" class="form-label">Warranty Years</label>
+              <input type="number" name="warranty_years" id="warranty_years" class="form-control">
+            </div>
+          </div>
 
+          <div class="row">
             <div class="col-md-3 mb-3">
-                <label for="part_remarks" class="form-label">Remarks</label>
-                <textarea name="part_remarks" id="part_remarks" class="form-control" rows="1"></textarea>
+              <label for="vendor_name" class="form-label">Vendor Name</label>
+              <input type="text" name="vendor_name" id="vendor_name" class="form-control">
             </div>
+            <div class="col-md-3 mb-3">
+              <label for="vendor_email" class="form-label">Vendor Email</label>
+              <input type="email" name="vendor_email" id="vendor_email" class="form-control">
+            </div>
+            <div class="col-md-3 mb-3">
+              <label for="vendor_phone" class="form-label">Vendor Phone</label>
+              <input type="text" name="vendor_phone" id="vendor_phone" class="form-control">
+            </div>
+            <div class="col-md-3 mb-3">
+              <label for="vendor_address" class="form-label">Vendor Address</label>
+              <textarea name="vendor_address" id="vendor_address" class="form-control" rows="1"></textarea>
+            </div>
+          </div>
 
-            <div class="col-md-3 mb-3">
-                <label for="warranty_years" class="form-label">Warranty Years</label>
-                <input type="number" name="warranty_years" id="warranty_years" class="form-control">
-            </div></div>
-
-            <div class="row">
-            <div class="col-md-3 mb-3">
-                <label for="vendor_name" class="form-label">Vendor Name</label>
-                <input type="text" name="vendor_name" id="vendor_name" class="form-control">
-            </div>
-            <div class="col-md-3 mb-3">
-                <label for="vendor_email" class="form-label">Vendor Email</label>
-                <input type="email" name="vendor_email" id="vendor_email" class="form-control">
-            </div>
-            <div class="col-md-3 mb-3">
-                <label for="vendor_phone" class="form-label">Vendor Phone</label>
-                <input type="text" name="vendor_phone" id="vendor_phone" class="form-control">
-            </div>
-            <div class="col-md-3 mb-3">
-                <label for="vendor_address" class="form-label">Vendor Address</label>
-                <textarea name="vendor_address" id="vendor_address" class="form-control" rows="1"></textarea>
-            </div></div>
-
-            <div class="mb-3">
-                <label for="file" class="form-label">Attach File</label>
-                <input type="file" name="file" id="file" class="form-control">
-            </div>
+          <div class="mb-3">
+            <label for="file" class="form-label">Attach File</label>
+            <input type="file" name="file" id="file" class="form-control">
+          </div>
         </div>
 
         <button type="submit" class="btn btn-danger">Submit</button>
-    </form>
+      </form>
+    </div>
+  </div>
 </div>
 
-<script>
-$(document).ready(function(){
-    // Show/hide parts section
-    $('#has_parts_involved').change(function(){
-        if($(this).is(':checked')){
-            $('#part_details').slideDown();
-        } else {
-            $('#part_details').slideUp();
-        }
-    });
-
-    // Add new part
-    $('#add-part').click(function(){
-        let newPart = $('.part-item').first().clone(); // clone first part
-        newPart.find('input, textarea, select').val(''); // clear values
-        $('#parts-container').append(newPart);
-    });
-
-    // Remove part
-    $(document).on('click', '.remove-part', function(){
-        if ($('.part-item').length > 1) {
-            $(this).closest('.part-item').remove();
-        } else {
-            alert("At least one part must remain!");
-        }
-    });
-});
-</script>
-
-<script>
-    $(document).ready(function(){
-        $('#has_parts_involved').change(function(){
-            if($(this).is(':checked')){
-                $('#part_details').slideDown();
-            } else {
-                $('#part_details').slideUp();
-            }
-        });
-    });
-</script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-  const sidebar = document.getElementById('sidebar');
-  const hamburger = document.getElementById('hamburgerBtn');
-  hamburger.addEventListener('click', () => {
-    sidebar.classList.toggle('expanded');
-  });
-
-  notifBtn.addEventListener('click', function(e) {
-    e.stopPropagation(); // prevent document click
-    notifDropdown.classList.toggle('active');
-  });
-
-  document.addEventListener('click', function(e) {
-    if (!notifBtn.contains(e.target) && !notifDropdown.contains(e.target)) {
-      notifDropdown.classList.remove('active');
+$(document).ready(function(){
+  $('#has_parts_involved').change(function(){
+    if($(this).is(':checked')){
+      $('#part_details').slideDown();
+    } else {
+      $('#part_details').slideUp();
     }
   });
+
+  $('#add-part').click(function(){
+    let newPart = $('.part-item').first().clone(); 
+    newPart.find('input, textarea, select').val(''); 
+    $('#parts-container').append(newPart);
+  });
+
+  $(document).on('click', '.remove-part', function(){
+    if ($('.part-item').length > 1) {
+      $(this).closest('.part-item').remove();
+    } else {
+      alert("At least one part must remain!");
+    }
+  });
+});
+
+$(document).ready(function(){
+  $('#has_parts_involved').change(function(){
+    if($(this).is(':checked')){
+      $('#part_details').slideDown();
+    } else {
+      $('#part_details').slideUp();
+    }
+  });
+});
+
+const sidebar = document.getElementById('sidebar');
+const hamburger = document.getElementById('hamburgerBtn');
+hamburger.addEventListener('click', () => {
+  sidebar.classList.toggle('expanded');
+});
+
+notifBtn.addEventListener('click', function(e) {
+  e.stopPropagation(); 
+  notifDropdown.classList.toggle('active');
+});
+
+document.addEventListener('click', function(e) {
+  if (!notifBtn.contains(e.target) && !notifDropdown.contains(e.target)) {
+    notifDropdown.classList.remove('active');
+  }
+});
 </script>
 </body>
 </html>

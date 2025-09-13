@@ -22,6 +22,7 @@ import pytz
 import re
 import json, os
 import json
+from fpdf import FPDF
 
 # --- Load env vars (make sure .env is set in Render dashboard too) ---
 load_dotenv()
@@ -314,10 +315,7 @@ def load_user(user_id):
 
 @app.route("/contact", methods=["POST"])
 def contact():
-    # If user is logged in, skip saving to outsiders' table
-    if current_user.is_authenticated:
-        return redirect(url_for("welcome", msg="You are already registered. Please use your account to contact us."))
-
+    
     conn = get_db_connection()
     name = request.form['name']
     email = request.form['email']
@@ -325,12 +323,23 @@ def contact():
     phone = request.form['phone']
 
     cur = conn.cursor()
+
+    cur.execute("SELECT 1 FROM contact_messages WHERE email = %s", (email,))
+    exists = cur.fetchone()
+
+    if exists:
+        cur.close()
+        conn.close()
+        return redirect(url_for("welcome", msg="This email is already there. Please enter another email."))
+
     cur.execute("""
         INSERT INTO contact_messages (name, email, message, phone)
         VALUES (%s, %s, %s, %s)
     """, (name, email, message, phone))
     conn.commit()
     cur.close()
+    conn.close()
+
     return redirect(url_for("welcome", msg="Your message has been sent successfully!"))
 
 @app.route("/admin/messages")
@@ -380,7 +389,7 @@ def dashboard():
     cur.execute("SELECT COUNT(*) FROM asset")
     total_assets = cur.fetchone()[0]
 
-    cur.execute("SELECT sum(purchase_cost) as total FROM asset where is_active='True'")
+    cur.execute("SELECT sum(purchase_cost) as total FROM asset ")
     total = cur.fetchone()[0]
 
     cur.execute("SELECT COUNT(*) FROM asset WHERE is_active = TRUE")
@@ -1475,25 +1484,46 @@ WHERE a.id = %s;
         expiring_warranties=notifications["expiring_warranties"],expiring_insurances=notifications["expiring_insurances"],
         total_users=0,total_count=notifications["total_count"],open_maintenance=0,pending_approvals=0,recent_logs=[])
 
+class PDF(FPDF):
+    def header_section(self, title, symbol=""):
+        self.set_font("Arial", 'B', 12)
+        self.set_text_color(220, 20, 60)  # Red
+        self.cell(0, 10, f"{symbol} {title}", ln=True)
+        self.set_text_color(0, 0, 0)  # Reset to black
+        self.ln(2)
+
 @app.route('/asset/<int:asset_id>/download_pdf')
 @login_required
 def download_asset_pdf(asset_id):
     conn = get_db_connection()
     cur = conn.cursor()
 
-    # Get asset and related data
+    # --- Asset details ---
     cur.execute("""
-        SELECT a.asset_name, a.description, a.purchase_date, a.purchase_cost, a.remarks,
-               c.name AS category, v.name AS vendor, a.tag, a.is_active
+        SELECT 
+            a.id,
+            a.asset_name,
+            a.description,
+            a.purchase_date,
+            a.purchase_cost,
+            a.remarks,
+            a.is_active,
+            a.tag,
+            child_cat.name AS subcategory,
+            COALESCE(parent_cat.name, child_cat.name) AS category,
+            v.name AS vendor_name,
+            v.phone,
+            v.email,
+            v.address
         FROM asset a
-        LEFT JOIN category c ON a.category_id = c.id
+        LEFT JOIN category child_cat ON a.category_id = child_cat.id
+        LEFT JOIN category parent_cat ON child_cat.parent_id = parent_cat.id
         LEFT JOIN vendors v ON a.id = v.asset_id
-        WHERE a.id = %s
+        WHERE a.id = %s;
     """, (asset_id,))
     asset = cur.fetchone()
-    if not asset:
-        abort(404)
 
+    # Assignments
     cur.execute("""
         SELECT u.name, ass.assigned_from, ass.assigned_until, ass.remarks
         FROM assignments ass
@@ -1502,97 +1532,171 @@ def download_asset_pdf(asset_id):
     """, (asset_id,))
     assignments = cur.fetchall()
 
-    cur.execute("""
-        SELECT task_done, maintenance_date, cost, service_by
-        FROM maintenance
-        WHERE asset_id = %s ORDER BY maintenance_date DESC
-    """, (asset_id,))
-    maintenance = cur.fetchall()
-
-    cur.execute("""
-        SELECT years
-        FROM warranty WHERE asset_id = %s
-    """, (asset_id,))
+    # Warranty
+    cur.execute("SELECT years FROM warranty WHERE asset_id = %s", (asset_id,))
     warranty = cur.fetchone()
+    expiry_date = None
+    if warranty and asset[3]:
+        try:
+            expiry_date = asset[3] + relativedelta(years=warranty[0])
+        except Exception:
+            expiry_date = None
 
+    # Insurance
     cur.execute("""
         SELECT policy_number, provider_details, insured_value, start_date, end_date, insurance_premium
-        FROM insurances WHERE asset_id = %s
+        FROM insurances
+        WHERE asset_id = %s 
     """, (asset_id,))
-    insurance = cur.fetchone()
+    insurance_records = cur.fetchall()
+
+    # Maintenance
+    cur.execute("""
+        SELECT m.id, m.from_date, m.to_date, m.company, m.serviced_by, m.cost, m.maintenance_type, m.remarks,
+               p.asset_name AS part_name
+        FROM maintenance m
+        LEFT JOIN asset p ON m.part_id = p.id
+        WHERE m.asset_id = %s
+        ORDER BY m.from_date DESC
+    """, (asset_id,))
+    maintenance_records = cur.fetchall()
+
+    # Monthly Maintenance
+    cur.execute("""
+        SELECT mm.id, mm.maintenance_date, mm.remarks, mm.serviced_by,
+               p.asset_name AS part_name
+        FROM monthly_maintenance mm
+        LEFT JOIN asset p ON mm.part_id = p.id
+        WHERE mm.asset_id = %s
+        ORDER BY mm.maintenance_date DESC
+    """, (asset_id,))
+    monthly_records = cur.fetchall()
 
     cur.close()
     conn.close()
 
-    # Generate PDF
-    pdf = FPDF()
+    # ---------------- PDF ----------------
+    pdf = PDF()
     pdf.add_page()
 
-    # Header
     pdf.set_font("Arial", 'B', 16)
+    pdf.set_text_color(220, 20, 60)   # Red
     pdf.cell(0, 10, "SREE VENKATESHWARA ENTERPRISES", ln=True, align='C')
+    pdf.set_text_color(0, 0, 0) 
     pdf.set_font("Arial", 'B', 12)
     pdf.cell(0, 10, f"Asset Report - {asset[1]}", ln=True, align='C')
-    pdf.ln(10)
-
-    # Asset Details
-    pdf.set_font("Arial", 'B', 11)
-    pdf.cell(0, 10, "Asset Details", ln=True)
-    pdf.set_font("Arial", '', 10)
-    labels = ["Name", "Description", "Purchase Date", "Purchase Cost", "Remarks", "Category", "Vendor", "Tag", "Is Active"]
-    for i, label in enumerate(labels):
-        value = asset[i] if asset[i] else '-'
-        if label == "Purchase Cost":
-            value = f"Rs. {value}"
-        pdf.cell(0, 8, f"{label}: {value}", ln=True)
     pdf.ln(5)
 
-    # Assignment History
-    pdf.set_font("Arial", 'B', 11)
-    pdf.cell(0, 10, "Assignment History", ln=True)
+    # Asset Details
+    pdf.header_section("Asset Details")
+    pdf.set_font("Arial", '', 10)
+    details = [
+        ("Name", asset[1]),
+        ("Description", asset[2]),
+        ("Purchase Date", asset[3]),
+        ("Purchase Cost", f"Rs. {asset[4]}" if asset[4] else "-"),
+        ("Remarks", asset[5]),
+        ("Is Active", "Yes" if asset[6] else "No"),
+        ("Tag", asset[7]),
+        ("Subcategory", asset[8]),
+        ("Category", asset[9]),
+        ("Vendor", asset[10]),
+        ("Vendor Phone", asset[11]),
+        ("Vendor Email", asset[12]),
+        ("Vendor Address", asset[13]),
+    ]
+    for label, value in details:
+        pdf.cell(0, 8, f"{label}: {value if value else '-'}", ln=True)
+    pdf.ln(5)
+
+    # Assignment History (Table)
+    pdf.header_section("Assignment History")
+    pdf.set_font("Arial", 'B', 10)
+    pdf.cell(40, 8, "User", 1)
+    pdf.cell(40, 8, "From", 1)
+    pdf.cell(40, 8, "Until", 1)
+    pdf.cell(70, 8, "Remarks", 1, ln=True)
     pdf.set_font("Arial", '', 10)
     if assignments:
-        for ass in assignments:
-            pdf.multi_cell(0, 8, f"User: {ass[0]}\nFrom: {ass[1]}\nUntil: {ass[2]}\nRemarks: {ass[3]}", border=1)
-            pdf.ln(2)
+        for a in assignments:
+            pdf.cell(40, 8, str(a[0]), 1)
+            pdf.cell(40, 8, str(a[1]), 1)
+            pdf.cell(40, 8, str(a[2]), 1)
+            pdf.cell(70, 8, str(a[3] or "-"), 1, ln=True)
     else:
-        pdf.cell(0, 8, "No assignment records.", ln=True)
+        pdf.cell(190, 8, "No assignment records.", 1, ln=True)
+    pdf.ln(5)
 
-    # Maintenance
-    pdf.set_font("Arial", 'B', 11)
-    pdf.cell(0, 10, "Maintenance Records", ln=True)
-    pdf.set_font("Arial", '', 10)
-    if maintenance:
-        for m in maintenance:
-            pdf.multi_cell(0, 8, f"Task Done: {m[0]}\nDate: {m[1]}\nCost: Rs. {m[2]}\nService By: {m[3]}", border=1)
-            pdf.ln(2)
+    # Maintenance (Table)
+    pdf.header_section("Maintenance Records")
+    pdf.set_font("Arial", 'B', 10)
+    headers = ["From", "To", "Company", "Serviced By", "Cost", "Type", "Part", "Remarks"]
+    widths = [20, 20, 30, 25, 20, 15, 15, 55]
+    for i, h in enumerate(headers):
+        pdf.cell(widths[i], 8, h, 1)
+    pdf.ln()
+    pdf.set_font("Arial", '', 9)
+    if maintenance_records:
+        for m in maintenance_records:
+            row = [m[1], m[2], m[3], m[4], f"Rs.{m[5]}", m[6], m[8] or "-", m[7] or "-"]
+            for i, val in enumerate(row):
+                pdf.cell(widths[i], 8, str(val), 1)
+            pdf.ln()
     else:
-        pdf.cell(0, 8, "No maintenance records.", ln=True)
+        pdf.cell(sum(widths), 8, "No maintenance records.", 1, ln=True)
+    pdf.ln(5)
 
-    # Warranty Info
-    pdf.set_font("Arial", 'B', 11)
-    pdf.cell(0, 10, "Warranty Info", ln=True)
+    # Monthly Maintenance (Table)
+    pdf.header_section("Monthly Maintenance")
+    pdf.set_font("Arial", 'B', 10)
+    pdf.cell(40, 8, "Date", 1)
+    pdf.cell(60, 8, "Remarks", 1)
+    pdf.cell(40, 8, "Serviced By", 1)
+    pdf.cell(50, 8, "Part", 1, ln=True)
+    pdf.set_font("Arial", '', 9)
+    if monthly_records:
+        for mm in monthly_records:
+            pdf.cell(40, 8, str(mm[1]), 1)
+            pdf.cell(60, 8, str(mm[2] or "-"), 1)
+            pdf.cell(40, 8, str(mm[3] or "-"), 1)
+            pdf.cell(50, 8, str(mm[4] or "-"), 1, ln=True)
+    else:
+        pdf.cell(190, 8, "No monthly maintenance records.", 1, ln=True)
+    pdf.ln(5)
+
+    # Warranty
+    pdf.header_section("Warranty Info")
     pdf.set_font("Arial", '', 10)
     if warranty:
         pdf.cell(0, 8, f"Warranty Duration: {warranty[0]} Year(s)", ln=True)
+        if expiry_date:
+            pdf.cell(0, 8, f"Expiry Date: {expiry_date}", ln=True)
     else:
         pdf.cell(0, 8, "No warranty info.", ln=True)
+    pdf.ln(5)
 
-    # Insurance Info
-    pdf.set_font("Arial", 'B', 11)
-    pdf.cell(0, 10, "Insurance Info", ln=True)
-    pdf.set_font("Arial", '', 10)
-    if insurance:
-        pdf.multi_cell(0, 8, f"Policy #: {insurance[0]}\nProvider Details: {insurance[1]}\nInsured Value: Rs. {insurance[2]}\nStart Date: {insurance[3]}\nEnd Date: {insurance[4]}\nInsurance Premium: {insurance[4]}", border=1)
+    # Insurance (Table)
+    pdf.header_section("Insurance Info")
+    pdf.set_font("Arial", 'B', 10)
+    headers = ["Policy #", "Provider", "Insured Value", "Start", "End", "Premium"]
+    widths = [40, 60, 25, 20, 20, 20]
+    for i, h in enumerate(headers):
+        pdf.cell(widths[i], 8, h, 1)
+    pdf.ln()
+    pdf.set_font("Arial", '', 9)
+    if insurance_records:
+        for ins in insurance_records:
+            row = [ins[0], ins[1], f"Rs.{ins[2]}", ins[3], ins[4], f"Rs.{ins[5]}"]
+            for i, val in enumerate(row):
+                pdf.cell(widths[i], 8, str(val), 1)
+            pdf.ln()
     else:
-        pdf.cell(0, 8, "No insurance info.", ln=True)
+        pdf.cell(sum(widths), 8, "No insurance info.", 1, ln=True)
 
-    # Return PDF
-    pdf_output = io.BytesIO()
-    pdf_bytes = pdf.output(dest='S').encode('latin-1', errors='replace')
-    pdf_output.write(pdf_bytes)
+    pdf_bytes = pdf.output(dest="S").encode("latin-1")
+    pdf_output = io.BytesIO(pdf_bytes)
     pdf_output.seek(0)
-    return send_file(pdf_output, as_attachment=True, download_name=f"{asset[0]}_report.pdf", mimetype='application/pdf')
+    return send_file(pdf_output, as_attachment=True, download_name=f"SVE_{asset[0]}_report.pdf", mimetype='application/pdf')
 
 @app.route('/asset/<string:asset_tag>/download_qr')
 @login_required
@@ -1816,7 +1920,7 @@ def edit_asset(asset_id):
         return redirect(url_for('view_assets'))
 
     # Fetch all categories and subcategories
-    cur.execute("SELECT id, name, parent_id FROM category WHERE is_active = TRUE")
+    cur.execute("SELECT id, name, parent_id FROM category WHERE is_active = TRUE AND id <> 0")
     categories = cur.fetchall()
 
     cur.execute("SELECT id, name FROM user_details WHERE is_active = TRUE")
@@ -1980,11 +2084,11 @@ def add_asset():
     notifications = get_notifications()
 
     # Get top-level categories (parent_id IS NULL)
-    cur.execute("SELECT id, name FROM category WHERE parent_id IS NULL AND is_active = TRUE")
+    cur.execute("SELECT id, name FROM category WHERE parent_id = 0 AND is_active = TRUE AND id <> 0")
     categories = cur.fetchall()
 
     # Get subcategories (parent_id IS NOT NULL)
-    cur.execute("SELECT id, name, parent_id FROM category WHERE parent_id IS NOT NULL AND is_active = TRUE")
+    cur.execute("SELECT id, name, parent_id FROM category WHERE parent_id <> 0 AND is_active = TRUE AND id <> 0")
     subcategories = cur.fetchall()
 
 
@@ -2016,62 +2120,71 @@ def add_asset():
         new_category = request.form.get('new_category')
         new_subcategory = request.form.get('new_subcategory')
 
-        # Insert new category if selected
+        cur.execute("SELECT COALESCE(MAX(id), 0) + 1 FROM category")
+        next_id = cur.fetchone()[0]
+
         if category_id == 'new' and new_category:
-            cur.execute("""
-                INSERT INTO category (name, parent_id, is_active) VALUES (%s, NULL, TRUE) RETURNING id
-            """, (new_category,))
-            category_id = cur.fetchone()[0]
+            cur.execute("""INSERT INTO category (id, name, parent_id, is_active) VALUES (%s, %s, 0, TRUE)""", (next_id, new_category))
+            category_id = next_id
             conn.commit()
 
-        # Insert new subcategory if selected
+        cur.execute("SELECT COALESCE(MAX(id), 0) + 1 FROM category")
+        next_sub_id = cur.fetchone()[0]
+
         if subcategory_id == 'new' and new_subcategory and category_id:
-            cur.execute("""
-                INSERT INTO category (name, parent_id, is_active) VALUES (%s, %s, TRUE) RETURNING id
-            """, (new_subcategory, category_id))
-            subcategory_id = cur.fetchone()[0]
+            cur.execute("""INSERT INTO category (id, name, parent_id, is_active) VALUES (%s, %s, %s, TRUE)""", (next_sub_id, new_subcategory, category_id))
+            subcategory_id = next_sub_id
             conn.commit()
 
-        # Final category ID
         final_category_id = subcategory_id or category_id
 
-        cur.execute("""
-            SELECT tag FROM asset 
-            WHERE tag LIKE 'SVE-%' 
-            ORDER BY id DESC 
-            LIMIT 1
-        """)
+        cur.execute("SELECT COALESCE(MAX(id), 0) + 1 FROM asset")
+        next_asset_id = cur.fetchone()[0]
+
+        cur.execute("""SELECT tag FROM asset WHERE tag LIKE %s ORDER BY id DESC LIMIT 1""",(f"SVE-{int(category_id):02d}-%",))
+
         last_tag_row = cur.fetchone()
         if last_tag_row and last_tag_row[0]:
-            last_number = int(last_tag_row[0].split('-')[1])
-            next_number = last_number + 1
+          last_number = int(last_tag_row[0].split('-')[-1])
+          next_number = last_number + 1
         else:
-            next_number = 1
-        tag = f"SVE-{next_number:06d}"
+          next_number = 1
 
-        # Asset table
-        cur.execute("""INSERT INTO asset (asset_name, description, category_id, purchase_date, purchase_cost, is_active, created_at, updated_at, tag, remarks, parent_asset_id
-            ) VALUES (%s, %s, %s, %s, %s, FALSE, %s, %s, %s, %s, %s) RETURNING id
-            """, (asset_name, description, final_category_id, purchase_date, purchase_cost, now, now, tag, remarks, None))
-        asset_id = cur.fetchone()[0]
+        tag = f"SVE-{int(category_id):02d}-{next_number:04d}"
 
-        # Request entry
+        cur.execute("""INSERT INTO asset (id, asset_name, description, category_id, purchase_date, purchase_cost,
+                       is_active, created_at, updated_at, tag, remarks, parent_asset_id)
+                       VALUES (%s, %s, %s, %s, %s, %s, FALSE, %s, %s, %s, %s, %s)""",
+                    (next_asset_id, asset_name, description, final_category_id, purchase_date, purchase_cost,
+                     now, now, tag, remarks, parent_asset_id))
+        asset_id = next_asset_id
+        conn.commit()
+
+        cur.execute("SELECT COALESCE(MAX(id), 0) + 1 FROM requests")
+        next_request_id = cur.fetchone()[0]
+
         cur.execute("""
-            INSERT INTO requests (request_type, requested_by, asset_id, status)
-            VALUES ('add', %s, %s, 'Pending')
-        """, (current_user.id, asset_id))
+            INSERT INTO requests (id, request_type, requested_by, asset_id, status)
+            VALUES (%s, 'add', %s, %s, 'Pending')
+        """, (next_request_id, current_user.id, asset_id))
 
-        # Warranty
-        cur.execute("""
-            INSERT INTO warranty (asset_id, years, is_active)
-            VALUES (%s, %s, %s)
-        """, (asset_id, warranty_years, True))
+        cur.execute("SELECT COALESCE(MAX(id), 0) + 1 FROM warranty")
+        next_warranty_id = cur.fetchone()[0]
 
-        # Vendor
-        cur.execute("""
-            INSERT INTO vendors (name, email, phone, address, is_active, asset_id)
-            VALUES (%s, %s, %s, %s, TRUE, %s)
-        """, (vendor_name, vendor_email, vendor_phone, vendor_address, asset_id))
+        cur.execute("SELECT COALESCE(MAX(id), 0) + 1 FROM vendors")
+        next_vendor_id = cur.fetchone()[0]
+
+        if warranty_years:
+            cur.execute("""
+            INSERT INTO warranty (id,asset_id, years, is_active)
+            VALUES (%s, %s, %s, %s)
+            """, (next_warranty_id, asset_id, warranty_years, True))
+
+        if vendor_name or vendor_email or vendor_phone or vendor_address:
+            cur.execute("""
+            INSERT INTO vendors (id, name, email, phone, address, is_active, asset_id)
+            VALUES (%s, %s, %s, %s, %s, TRUE, %s)
+            """, (next_vendor_id, vendor_name, vendor_email, vendor_phone, vendor_address, asset_id))
 
         upload_folder = os.path.join(app.root_path, 'static', 'uploads')
         os.makedirs(upload_folder, exist_ok=True)
@@ -2157,18 +2270,23 @@ def extend_assignment(asset_id):
         new_until = request.form.get('new_assigned_until') or None
         new_remarks = request.form.get('new_remarks') or None
 
+        cur.execute("SELECT COALESCE(MAX(id), 0) + 1 FROM assignments")
+        next_assignment_id = cur.fetchone()[0]
+
         cur.execute("""
-            INSERT INTO assignments (asset_id, user_id, assigned_from, assigned_until, remarks, is_active)
-            VALUES (%s, %s, %s, %s, %s, TRUE)
+            INSERT INTO assignments (id, asset_id, user_id, assigned_from, assigned_until, remarks, is_active)
+            VALUES (%s, %s, %s, %s, %s, %s, TRUE)
             RETURNING id
-        """, (asset_id, new_user_id, new_from, new_until, new_remarks))
+        """, (next_assignment_id, asset_id, new_user_id, new_from, new_until, new_remarks))
         new_assignment_id = cur.fetchone()[0]
 
-        # Insert request for approval
+        cur.execute("SELECT COALESCE(MAX(id), 0) + 1 FROM requests")
+        next_request_id = cur.fetchone()[0]
+        
         cur.execute("""
-            INSERT INTO requests (request_type, requested_by, asset_id, assignment_id, status)
-            VALUES ('assignment', %s, %s, %s, 'Pending')
-        """, (current_user.id, asset_id, new_assignment_id))
+            INSERT INTO requests (id, request_type, requested_by, asset_id, assignment_id, status)
+            VALUES (%s, 'assignment', %s, %s, %s, 'Pending')
+        """, (next_request_id, current_user.id, asset_id, new_assignment_id))
 
         conn.commit()
         flash("Assignment extended successfully.", "success")
@@ -2212,30 +2330,33 @@ def add_insurance(asset_id):
         cur.execute("SELECT COUNT(*) FROM insurances WHERE asset_id = %s", (asset_id,))
         insurance_count = cur.fetchone()[0]
 
+        cur.execute("SELECT COALESCE(MAX(id), 0) + 1 FROM insurances")
+        next_insurance_id = cur.fetchone()[0]
+
         if insurance_count == 0:
-            # First time → Needs approval
             cur.execute("""
                 INSERT INTO insurances 
-                    (asset_id, policy_number, provider_details, provider_contact, insured_value, insurance_premium, start_date, end_date, is_active)
-                VALUES (%s,%s,%s,%s,%s,%s,%s,%s, TRUE)
+                    (id, asset_id, policy_number, provider_details, provider_contact, insured_value, insurance_premium, start_date, end_date, is_active)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s, TRUE)
                 RETURNING id
-            """, (asset_id, policy_number, provider_details, provider_contact, insured_value, premium, start_date, end_date))
+            """, (next_insurance_id, asset_id, policy_number, provider_details, provider_contact, insured_value, premium, start_date, end_date))
             insurance_id = cur.fetchone()[0]
-
-            # Create approval request
+         
+            cur.execute("SELECT COALESCE(MAX(id), 0) + 1 FROM requests")
+            next_request_id = cur.fetchone()[0]
+           
             cur.execute("""
-                INSERT INTO requests (request_type, requested_by, asset_id, insurance_id, remarks, is_active)
-                VALUES ('insurance', %s, %s, %s, %s, TRUE)
-            """, (current_user.id, asset_id, insurance_id, f"First insurance request for asset {asset_id}"))
+                INSERT INTO requests (id, request_type, requested_by, asset_id, insurance_id, remarks, is_active)
+                VALUES (%s,'insurance', %s, %s, %s, %s, TRUE)
+            """, (next_request_id, current_user.id, asset_id, insurance_id, f"First insurance request for asset {asset_id}"))
 
             flash("First-time insurance request submitted for approval.", "info")
         else:
-            # Not first time → Directly active (no approval)
             cur.execute("""
                 INSERT INTO insurances 
-                    (asset_id, policy_number, provider_details, provider_contact, insured_value, insurance_premium, start_date, end_date, is_active, created_at)
-                VALUES (%s,%s,%s,%s,%s,%s,%s,%s, TRUE,%s)
-            """, (asset_id, policy_number, provider_details, provider_contact, insured_value, premium, start_date, end_date, now))
+                    (id, asset_id, policy_number, provider_details, provider_contact, insured_value, insurance_premium, start_date, end_date, is_active, created_at)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s, TRUE,%s)
+            """, (next_insurance_id, asset_id, policy_number, provider_details, provider_contact, insured_value, premium, start_date, end_date, now))
 
             flash("Insurance added successfully.", "success")
 
@@ -2489,24 +2610,28 @@ def add_maintenance():
                     VALUES (%s,%s,%s,%s,%s,TRUE)
                 """, (part_id, filename, file_db_path, current_user.id, now))
             
+            cur.execute("SELECT COALESCE(MAX(id), 0) + 1 FROM requests")
+            next_request_id = cur.fetchone()[0]
+            
             cur.execute("""
-            INSERT INTO requests (request_type, requested_by, asset_id, status)
-            VALUES ('add', %s, %s ,'Pending')
-        """, (current_user.id, part_id))
+            INSERT INTO requests (id, request_type, requested_by, asset_id, status)
+            VALUES (%s, 'add', %s, %s ,'Pending')
+        """, (next_request_id, current_user.id, part_id))
 
         # --- Insert Maintenance record ---
         cur.execute("""INSERT INTO maintenance (asset_id, part_id, from_date, to_date, company, serviced_by,
         has_parts_involved, cost, maintenance_type, remarks, is_active, created_at
         ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,TRUE,%s) RETURNING id
         """, (asset_id, part_id, from_date, to_date, company, serviced_by,has_parts_involved, cost, maintenance_type, remarks, now))
-        maintenance_id = cur.fetchone()[0]   # now it works
+        maintenance_id = cur.fetchone()[0]
 
+        cur.execute("SELECT COALESCE(MAX(id), 0) + 1 FROM requests")
+        next_request_id = cur.fetchone()[0]
 
-        # --- Insert request for approval ---
         cur.execute("""
-            INSERT INTO requests (request_type, requested_by, asset_id, maintenance_id, status)
-            VALUES ('maintenance', %s, %s, %s ,'Pending')
-        """, (current_user.id, asset_id, maintenance_id))
+            INSERT INTO requests (id, request_type, requested_by, asset_id, maintenance_id, status)
+            VALUES (%s, 'maintenance', %s, %s, %s ,'Pending')
+        """, (next_request_id, current_user.id, asset_id, maintenance_id))
 
         conn.commit()
         cur.close()
@@ -2619,10 +2744,13 @@ def add_monthly_maintenance(asset_id):
                     VALUES (%s,%s,%s,%s,%s,TRUE)
                 """, (part_id, filename, file_db_path, current_user.id, now))
 
+            cur.execute("SELECT COALESCE(MAX(id), 0) + 1 FROM requests")
+            next_request_id = cur.fetchone()[0]
+
             cur.execute("""
-            INSERT INTO requests (request_type, requested_by, asset_id, status)
-            VALUES ('add', %s, %s ,'Pending')
-        """, (current_user.id, part_id))
+            INSERT INTO requests (id, request_type, requested_by, asset_id, status)
+            VALUES (%s, 'add', %s, %s ,'Pending')
+        """, (next_request_id, current_user.id, part_id))
 
         # --- Insert monthly maintenance as inactive/pending ---
         cur.execute("""
@@ -2635,11 +2763,13 @@ def add_monthly_maintenance(asset_id):
             remarks, serviced_by, has_parts_involved
         ))
 
-        # --- Insert request for approval ---
+        cur.execute("SELECT COALESCE(MAX(id), 0) + 1 FROM requests")
+        next_request_id = cur.fetchone()[0]
+        
         cur.execute("""
-            INSERT INTO requests (request_type, requested_by, asset_id, status)
-            VALUES ('maintenance', %s, %s, 'Pending')
-        """, (current_user.id, asset_id))
+            INSERT INTO requests (id, request_type, requested_by, asset_id, status)
+            VALUES (%s, 'maintenance', %s, %s, 'Pending')
+        """, (next_request_id, current_user.id, asset_id))
 
         conn.commit()
         cur.close()

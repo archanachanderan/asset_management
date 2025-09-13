@@ -9,296 +9,10 @@
 <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<style>
-  .sidebar {
-    position: fixed;
-    top: 0;
-    left: 0;
-    height: 100vh;
-    width: 80px;
-    background: #fff;
-    box-shadow: 2px 0 5px rgba(0,0,0,0.1);
-    transition: width 0.3s;
-    overflow: hidden;
-    z-index: 1000;
-  }
-  .sidebar.expanded { width: 250px; }
-  .sidebar .nav-link {
-    display: flex;
-    align-items: center;
-    padding: 15px;
-    color: #dc3545;
-    white-space: nowrap;
-    position: relative;
-  }
-  .sidebar .nav-link i { min-width: 30px; font-size: 1.2rem; }
-  .sidebar .nav-link span { margin-left: 10px; transition: opacity 0.3s; opacity: 0; }
-  .sidebar.expanded .nav-link span { opacity: 1; }
-  .sidebar .nav-link:hover { background: #f5f5f5; border-radius: 8px; }
-
-  .sidebar.expanded #user-email { display: block !important; }
-
-  /* Navbar */
-  .navbar { margin-left: 80px; transition: margin-left 0.3s; }
-  .sidebar.expanded ~ .navbar { margin-left: 250px; }
-
-  /* Content */
-  .content { margin-left: 50px; padding: 20px; transition: margin-left 0.3s; margin-right: 0;}
-  .sidebar.expanded ~ .content { margin-left: 250px; }
-
-  /* Hamburger */
-  .hamburger { font-size: 1.5rem; cursor: pointer; }
-
-  /* Cards */
-  .card { border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-
-    /* Notifications */
-  .notification-badge {
-    position: absolute;
-    top: 0;
-    right: -5px;
-    font-size: 0.6rem;
-    background: red;
-    color: #fff;
-    border-radius: 50%;
-    padding: 2px 5px;
-  }
-  .custom-dropdown {
-      display: none;
-      position: fixed;
-      top: 70px; /* just below navbar */
-      right: 20px;
-      z-index: 2000;
-      background: white;
-      border: 1px solid #ccc;
-      border-radius: 8px;
-      box-shadow: 0 4px 8px rgba(0,0,0,0.15);
-      min-width: 250px;
-      transition: all 0.3s ease;
-      opacity: 0;
-      transform: translateY(-10px);
-      overflow-y: auto;
-      height: 100px;
-    }
-    .custom-dropdown.active {
-      display: block;
-      opacity: 1;
-      transform: translateY(0);
-    }
-    .custom-dropdown a {
-      display: block;
-      padding: 10px;
-      color: #333;
-      text-decoration: none;
-    }
-    .custom-dropdown a:hover {
-      background: #f5f5f5;
-    }
-    body {
-      background: linear-gradient(135deg, #050548, #1c1c84);
-      min-height: 150vh;
-      padding: 20px;
-    }
-
-    .card-custom {
-      height: 170px;
-      position: relative;
-      overflow: hidden;
-      border-radius: 20px;
-      box-shadow: 0 8px 18px rgba(0, 0, 0, 0.3);
-      transition: transform 0.3s ease, box-shadow 0.3s ease;
-    }
-
-    .card-custom:hover {
-      transform: translateY(-10px) scale(1.03);
-      box-shadow: 0 15px 25px rgba(0, 0, 0, 0.5);
-    }
-
-    .card-custom i.bg-icon {
-      position: absolute;
-      bottom: -20px;
-      right: -10px;
-      font-size: 110px;
-    }
-
-    .card-title {
-      font-weight: bold;
-      font-size: 1.1rem;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .card-title i {
-      font-size: 1.3rem;
-    }
-
-    .flex-card {
-      flex: 1 1 calc(19% - 1.5rem);
-      min-width: 200px;
-    }
-    .card-body::-webkit-scrollbar {
-      display: none;  /* Chrome, Safari */
-    }
-    #categoryBar, #subcategoryPie {
-      height: 300px !important; /* adjust as needed */
-    }
-    .calendar {
-    background: #1c1c84;
-    padding: 20px;
-    border-radius: 10px;
-    width: 400px;
-  }
-  .calendar header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 10px;
-  }
-  .calendar header button {
-    background: #ffffff;
-    color: #050548;
-    border: none;
-    padding: 5px 10px;
-    border-radius: 5px;
-    cursor: pointer;
-  }
-  .calendar table {
-    width: 100%;
-    border-collapse: collapse;
-  }
-  .calendar th, .calendar td {
-    text-align: center;
-    padding: 10px;
-    cursor: pointer;
-    border-radius: 5px;
-  }
-  .calendar th {
-    color: #ffffff;
-  }
-  .calendar td:hover {
-    background: #ffffff;
-    color: black;
-  }
-  .calendar .today {
-    background: #9ea3a9;
-    color: #fff;
-  }
-  .calendar .event {
-    background: #ffc107;
-    color: #000;
-  }
-  .legend-box {
-    display: inline-block;
-    width: 10px;
-    height: 10px;
-    border-radius: 10px;
-  }
-  /* Modal base styles */
-.calendarbox {
-  display: none; 
-  position: fixed; 
-  z-index: 1000; 
-  left: 0; top: 20px;
-  width: 100%; height: 100%;
-  background: rgba(0,0,0,0.6);
-}
-
-/* Modal content box */
-.calendar-content {
-  background: #fff;
-  margin: 8% auto;
-  padding: 24px;
-  border-radius: 10px;
-  max-width: 600px;
-  position: relative;
-  box-shadow: 0 5px 30px rgba(0,0,0,0.3);
-  overflow-y: auto;
-  max-height: 60vh;  
-}
-
-.close {
-  position: absolute;
-  top: 16px; right: 24px;
-  font-size: 28px;
-  cursor: pointer;
-  color: black;
-}
-
-.today {
-  border: 2px solid white !important;
-  border-radius: 10px;
-}
-.custom-modal-overlay {
-  position: fixed;
-  top: 0; left:0; right:0; bottom:0;
-  background: rgba(0, 0, 0, 0.6);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 1050;
-  visibility: hidden;
-  opacity: 0;
-  transition: opacity 0.3s ease;
-}
-
-.custom-modal-overlay.show {
-  visibility: visible;
-  opacity: 1;
-}
-
-.custom-modal-dialog {
-  background: white;
-  border-radius: 0.3rem;
-  box-shadow: 0 0.5rem 1rem rgba(0,0,0,.15);
-  max-width: 900px;
-  width: 90%;
-  max-height: 80vh;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-}
-
-.custom-modal-lg {
-  max-width: 900px;
-}
-
-.custom-modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1rem;
-  border-bottom: 1px solid #dee2e6;
-}
-
-.custom-modal-title {
-  margin: 0;
-  font-size: 1.25rem;
-  font-weight: 500;
-}
-
-.custom-btn-close {
-  background: none;
-  border: none;
-  font-size: 1.5rem;
-  line-height: 1;
-  cursor: pointer;
-}
-
-.custom-modal-body {
-  padding: 1rem;
-  overflow-y: auto;
-  flex-grow: 1;
-}
-
-th:hover {
-  background-color: rgb(215, 200, 200); /* Light grey background on hover */
-  cursor: pointer; /* Shows a pointer cursor to indicate it's clickable */
-}
-
-</style>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
-<body>
+
+<body style=" background: linear-gradient(135deg, #050548, #1c1c84); min-height: 150vh; padding: 20px;">
 
 <div class="sidebar" id="sidebar">
   <div class="text-center py-3">
@@ -433,9 +147,9 @@ th:hover {
       <div class="flex-card">
         <div class="card text-white card-custom" style="background-color: orangered; cursor:pointer;" data-bs-toggle="modal" data-bs-target="#viewAssetValueModal">
           <div class="card-body">
-            <h5 class="card-title"><i class="fas fa-dollar-sign"></i> Total Value</h5>
+            <h5 class="card-title"><i class="fas fa-indian-rupee-sign"></i> Total Value</h5>
             <p class="card-text fs-2 mt-2">{{ total }}</p>
-            <i class="fas fa-dollar-sign bg-icon"></i>
+            <i class="fas fa-indian-rupee-sign bg-icon"></i>
           </div>
         </div>
       </div>
@@ -631,9 +345,8 @@ th:hover {
         </div>
       </div>
 
-    </div> <!-- End flex cards -->
+    </div> 
 
-    <!-- Charts & Calendar -->
     <div class="row pt-4 row-cols-2 g-0">
       <div style="flex: 1 1 30%; min-width: 280px;">
         <div class="card shadow-sm border-0 text-white" style="background-color: #1c1c84; border-top-right-radius: 0; border-bottom-right-radius: 0;">
@@ -663,7 +376,6 @@ th:hover {
         </div>
       </div>
     </div>
-    <!-- Category Assets Modal -->
 <div class="modal fade" id="categoryModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-lg">
     <div class="modal-content text-dark">
@@ -685,7 +397,7 @@ th:hover {
             <canvas id="maintenanceLine"></canvas>
           </div>
         </div>
-        <!-- Maintenance Details Modal -->
+    
 <div class="modal fade" id="maintenanceModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-lg modal-dialog-centered">
     <div class="modal-content bg-white text-dark border border-dark rounded">
@@ -694,7 +406,6 @@ th:hover {
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body" id="maintenanceModalBody">
-        <!-- Data from JS will appear here -->
       </div>
     </div>
   </div>
@@ -805,8 +516,8 @@ th:hover {
         <tbody>
           {% for activity in activities %}
             <tr {% if session.role == 'Asset Manager' and activity.id %} onclick="window.location.href='{{ url_for('approve_request_page', request_id=activity.id) }}'" style="cursor: pointer;" {% endif %}>
-              <td>{{ activity.message }}</td>
-              <td>{{ activity.time }}</td>
+              <td style="color:white">{{ activity.message }}</td>
+              <td style="color:white">{{ activity.time }}</td>
             </tr>
           {% else %}
             <tr>
@@ -838,36 +549,6 @@ th:hover {
   {% endif %}
 {% endwith %}
 
-<style>
-/* Custom table theme */
-.custom-table {
-  background-color: #1c1c84 !important;
-  color: white !important;
-}
-
-.custom-table thead th {
-  background-color: #1c1c84 !important;
-  color: white !important;
-  border-color: #1c1c84 !important;
-}
-
-.custom-table tbody tr {
-  background-color: #1c1c84 !important;
-  color: white !important;
-}
-
-.custom-table tbody tr:hover {
-  background-color: #1c1c84 !important; /* darker blue on hover */
-  color: white !important;
-}
-
-.custom-table td, 
-.custom-table th {
-  border-color: #1c1c84 !important; /* subtle border */
-  background-color: #1c1c84 !important;
-  color: white;
-}
-</style>
 
 <!-- Scripts -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
@@ -882,18 +563,18 @@ th:hover {
       maintenanceChart = new Chart(ctx, {
         type: "line",
         data: {
-          labels: data.labels,   // months
+          labels: data.labels,  
           datasets: [{
             label: "Maintenance Cost",
-            data: data.data,     // cost values
+            data: data.data,    
             borderColor: "#ffffff",
             backgroundColor: "rgba(255,255,255,0.2)",
             tension: 0.3,
             fill: true,
             pointBackgroundColor: "#007bff",
             pointRadius: 5,
-            pointHoverBackgroundColor: "#D3D3D3", // yellow dot on hover
-            pointHoverBorderColor: "#000000",     // black border hover
+            pointHoverBackgroundColor: "#D3D3D3", 
+            pointHoverBorderColor: "#000000",     
             pointHoverBorderWidth: 2,
             pointHoverRadius: 10,
             pointHitRadius: 15
@@ -905,17 +586,17 @@ th:hover {
             legend: { position: "top", align: "end", labels: { color: "#ffffff" } 
           }, 
           tooltip: {
-              backgroundColor: "white",   // black box
-              titleColor: "black",        // white title
+              backgroundColor: "white",  
+              titleColor: "black",        
               bodyColor: "black",   
               borderColor: "#000000",  
               borderWidth: 2,
               padding: 10,
               cornerRadius: 8,
-              displayColors: false,       // removes color box
+              displayColors: false,       
               callbacks: {
                 label: function(ctx) {
-                  return `₹${ctx.raw}`;   // show value with ₹
+                  return `₹${ctx.raw}`;   
                 }
               }
             }
@@ -1219,7 +900,7 @@ th:hover {
         scales: {
           y: {
             beginAtZero: true,
-            title: { display: true, text: "Assets", color: "#ffffff"} ,ticks: { color: "#ffffff"}
+            title: { display: true, text: "Assets", color: "#ffffff"} ,ticks: { color: "#ffffff", stepSize: 2, callback: function(value) {return Number.isInteger(value) ? value : null;}}
           },
           x: {
             title: { display: true, text: "Lifecycle Stage", color: "#ffffff"} ,ticks: { color: "#ffffff"}
@@ -1353,16 +1034,3 @@ document.querySelectorAll('.asset-search-input').forEach(input => {
     });
 });
 </script>
-<style>
-  /* Ensure charts fill space */
-  #categoryBar,
-  #subcategoryPie,
-  #maintenanceLine {
-    width: 100% !important;
-    height: 300px !important;  /* adjust as needed */
-  }
-
-  #lifecycleBar {
-    height: 300px !important;  /* or any fixed value */
-  }
-</style>
