@@ -30,7 +30,9 @@
   {% if session.role == 'Asset Manager' or session.role == 'Super Admin' %}
   <a href="{{ url_for('view_users') }}" class="nav-link" data-bs-toggle="tooltip" title="Users"><i class="fas fa-users"></i><span>Users</span></a>
   {% endif %}
+  {% if session.role == 'Super Admin' %}
   <a href="{{ url_for('view_assets') }}" class="nav-link" data-bs-toggle="tooltip" title="Assets"><i class="fas fa-boxes"></i><span>Assets</span></a>
+  {% endif %}
   <a href="{{ url_for('view_messages') }}" class="nav-link" data-bs-toggle="tooltip" title="Messages"><i class="fas fa-envelope"></i><span>Messages</span></a>
   <a href="{{ url_for('change_password') }}" class="nav-link" data-bs-toggle="tooltip" title="Change Password"><i class="fas fa-key"></i><span>Change Password</span></a>
   <a href="{{ url_for('logout') }}" class="nav-link" data-bs-toggle="tooltip" title="Logout"><i class="fas fa-sign-out-alt"></i><span>Logout</span></a>
@@ -89,11 +91,12 @@
     {% endif %}
   </div>
 
+
+{% if session.role == 'Super Admin' %}
 <div class="content mt-4">
   <div class="container-fluid mt-3">
     <div class="d-flex flex-wrap justify-content-center gap-4">
-      
-      <!-- Total Assets -->
+
       <div class="flex-card">
         <div class="card text-white bg-primary card-custom" data-bs-toggle="modal" data-bs-target="#viewAssetsModal" style="cursor:pointer;">
           <div class="card-body">
@@ -104,7 +107,6 @@
         </div>
       </div>
 
-      <!-- Modal: Total Assets -->
       <div class="modal fade" id="viewAssetsModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-xl">
           <div class="modal-content">
@@ -143,7 +145,6 @@
         </div>
       </div>
 
-      <!-- Total Value -->
       <div class="flex-card">
         <div class="card text-white card-custom" style="background-color: orangered; cursor:pointer;" data-bs-toggle="modal" data-bs-target="#viewAssetValueModal">
           <div class="card-body">
@@ -154,7 +155,6 @@
         </div>
       </div>
 
-      <!-- Modal: Total Value -->
       <div class="modal fade" id="viewAssetValueModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-xl">
           <div class="modal-content">
@@ -191,7 +191,6 @@
         </div>
       </div>
 
-      <!-- Assets Active -->
       <div class="flex-card">
         <div class="card text-dark bg-warning card-custom" data-bs-toggle="modal" data-bs-target="#viewAssetActiveModal" style="cursor:pointer;">
           <div class="card-body">
@@ -202,7 +201,6 @@
         </div>
       </div>
 
-      <!-- Modal: Assets Active -->
       <div class="modal fade" id="viewAssetActiveModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-xl">
           <div class="modal-content">
@@ -243,7 +241,6 @@
         </div>
       </div>
 
-      <!-- Assets Inactive -->
       <div class="flex-card">
         <div class="card text-white bg-success card-custom" data-bs-toggle="modal" data-bs-target="#viewAssetInactiveModal" style="cursor:pointer;">
           <div class="card-body">
@@ -254,7 +251,7 @@
         </div>
       </div>
 
-      <!-- Modal: Assets Inactive -->
+      
       <div class="modal fade" id="viewAssetInactiveModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-xl">
           <div class="modal-content">
@@ -295,7 +292,6 @@
         </div>
       </div>
 
-      <!-- Assets Under Maintenance -->
       <div class="flex-card">
         <div class="card text-white card-custom" style="background-color: purple; cursor:pointer;" data-bs-toggle="modal" data-bs-target="#viewAssetMaintenance">
           <div class="card-body">
@@ -306,7 +302,6 @@
         </div>
       </div>
 
-      <!-- Modal: Assets Under Maintenance -->
       <div class="modal fade" id="viewAssetMaintenance" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-xl">
           <div class="modal-content">
@@ -430,8 +425,6 @@
       </div>
     </div>
 
-
-      <!-- Calendar -->
       <div class="calendar text-white ms-4" style="height: 450px; flex: 1 1 30%; min-width: 320px;">
         <header>
           <button id="prev">&lt;</button>
@@ -447,7 +440,6 @@
           <tbody id="calendarBody"></tbody>
         </table>
 
-        <!-- Legend -->
         <div class="calendar-legend mt-1">
           <div class="d-flex flex-column gap-1">
             <div class="d-flex align-items-center gap-4">
@@ -473,7 +465,6 @@
           <canvas id="lifecycleBar"></canvas>
         </div>
       </div>
-      <!-- Assets Modal -->
 <div class="modal fade" id="assetsModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-lg">
     <div class="modal-content text-dark">
@@ -485,7 +476,6 @@
   </div>
 </div>
     </div>
-<!-- Custom Modal Structure -->
 <div id="categoryModal" class="custom-modal-overlay" tabindex="-1" aria-hidden="true">
   <div class="custom-modal-dialog custom-modal-lg">
     <div class="custom-modal-content text-dark">
@@ -494,7 +484,6 @@
         <button type="button" class="custom-btn-close" aria-label="Close" onclick="closeCategoryModal()">×</button>
       </div>
       <div class="custom-modal-body" id="modalBody">
-        <!-- Your dynamic content goes here -->
       </div>
     </div>
   </div>
@@ -530,7 +519,6 @@
   </div>
 </div>
 
-<!-- Event Modal -->
 <div id="eventModal" class="calendarbox">
   <div class="calendar-content">
     <span id="closeModal" class="close">&times;</span>
@@ -549,8 +537,473 @@
   {% endif %}
 {% endwith %}
 
+{% elif session.role == 'Asset Manager' %}
+<div class="content mt-4">
+  <div class="container-fluid mt-3">
 
-<!-- Scripts -->
+    <!-- Top Cards -->
+    <div class="d-flex flex-wrap justify-content-center gap-4 mb-4">
+      
+      <!-- Total Assets -->
+      <div class="flex-card">
+        <div class="card text-white bg-primary card-custom" style="cursor:pointer; height: 200px;">
+          <div class="card-body">
+            <h5 class="card-title"><i class="fas fa-box"></i> Total Assets</h5>
+            <p class="card-text fs-2 mt-2">{{ total_assets }}</p>
+            <i class="fas fa-box bg-icon"></i>
+          </div>
+        </div>
+      </div>
+
+      <!-- Assets Under Maintenance -->
+      <div class="flex-card">
+        <div class="card text-white card-custom" style="background-color: orangered; cursor:pointer; height: 200px;">
+          <div class="card-body">
+            <h5 class="card-title"><i class="fas fa-cogs"></i> Assets Under Maintenance</h5>
+            <p class="card-text fs-2 mt-2">{{ assets_under_maintenance }}</p>
+            <i class="fas fa-cogs bg-icon"></i>
+          </div>
+        </div>
+      </div>
+
+      <!-- Pending Requests -->
+      <div class="flex-card">
+        <a href="{{ url_for('view_requests', status='Pending') }}" style="text-decoration: none;">
+          <div class="card text-dark bg-warning card-custom" style="cursor:pointer; height: 200px;">
+            <div class="card-body">
+              <h5 class="card-title"><i class="fas fa-clock"></i> Pending Requests</h5>
+              <p class="card-text fs-2 mt-2">{{ pending_assets }}</p>
+              <i class="fas fa-clock bg-icon"></i>
+            </div>
+          </div>
+        </a>
+      </div>
+
+      <!-- Approved Requests -->
+      <div class="flex-card">
+        <a href="{{ url_for('view_requests', status='Pending') }}" style="text-decoration: none;">
+        <div class="card text-white card-custom" style="cursor:pointer; background-color: purple; cursor:pointer; height: 200px;">
+          <div class="card-body">
+            <h5 class="card-title"><i class="fas fa-thumbs-up"></i> Approved Requests</h5>
+            <p class="card-text fs-2 mt-2">{{ approved_assets }}</p>
+            <i class="fas fa-thumbs-up bg-icon"></i>
+          </div>
+        </div>
+      </a>
+      </div>
+
+    </div>
+
+<div class="container-fluid">
+  <div class="row g-4 align-items-stretch">
+
+    <!-- Left side: Pending Requests + Recent Activities -->
+    <div class="col-md-9 d-flex flex-column gap-4">
+
+      <!-- Pending Requests -->
+      <div class="card shadow-sm flex-fill" style="background-color:#1c1c84; height: 400px;">
+        <div class="card-header text-white">
+          <h5 class="mb-0 text-white fw-bold">Pending Requests</h5>
+        </div>
+        <div class="card-body p-0" style="overflow-y: auto;">
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0 custom-table">
+              <thead>
+                <tr>
+                  <th>Request ID</th>
+                  <th>Asset Name</th>
+                  <th>Request Type</th>
+                  <th>Requested By</th>
+                  <th>Request Date</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for r in requests %}
+                <tr>
+                  <td style="color:white">{{ r[0] }}</td>
+                  <td style="color:white">{{ r[1] }}</td>
+                  <td style="color:white">{{ r[2] }}</td>
+                  <td style="color:white">{{ r[3] }}</td>
+                  <td style="color:white">{{ r[4].strftime("%Y-%m-%d") }}</td>
+                  <td>
+                    <form method="POST" action="{{ url_for('approve_request_page', request_id=r[0]) }}">
+                      <div class="d-flex gap-2">
+                        <input type="hidden" name="remarks" value="">
+                        <button type="submit" name="action" value="approve" class="btn btn-success btn-sm">Approve</button>
+                        <button type="submit" name="action" value="reject" class="btn btn-danger btn-sm">Reject</button>
+                      </div>
+                    </form>
+                  </td>
+                </tr>
+                {% else %}
+                <tr>
+                  <td colspan="6" class="text-center text-white">No pending requests</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recent Activities -->
+      <div class="card shadow-sm text-white flex-fill" style="background-color:#1c1c84; height: 400px;">
+        <div class="card-header">
+          <h5 class="mb-0 text-white">Recent Activities</h5>
+        </div>
+        <div class="card-body p-0" style="overflow-y: auto;">
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0 custom-table">
+              <thead>
+                <tr>
+                  <th>Activity</th>
+                  <th>Date/Time</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for activity in activities %}
+                <tr {% if session.role == 'Asset Manager' and activity.id %} 
+                    onclick="window.location.href='{{ url_for('approve_request_page', request_id=activity.id) }}'" 
+                    style="cursor: pointer;" {% endif %}>
+                  <td style="color:white">{{ activity.message }}</td>
+                  <td style="color:white">{{ activity.time }}</td>
+                </tr>
+                {% else %}
+                <tr>
+                  <td colspan="2" class="text-center text-white">No recent activities</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div> <!-- End left column -->
+
+    <div class="col-md-3 d-flex flex-column gap-3">
+
+  <!-- Quick Actions Card -->
+  <div class="card shadow-sm border-0 text-white" style="background-color: #1c1c84; border-radius: 0.5rem; height: 150px;">
+    <div class="card-header d-flex justify-content-between">
+      <span class="fw-bold">Quick Actions</span>
+    </div>
+    <div class="card-body d-flex flex-column">
+      <p><a href="{{ url_for('add_user') }}" class="btn btn-primary btn-lg my-2 w-100">
+        <i class="fas fa-plus-circle me-2"></i> Add User
+      </a></p>
+    </div>
+  </div>
+
+  <!-- Upcoming Alerts Card -->
+  <div class="card shadow-sm text-white flex-fill" style="background-color: #1c1c84; border-radius: 0.5rem;">
+    <div class="card-header d-flex justify-content-between">
+      <span>Upcoming Alerts</span>
+      <a href="{{ url_for('view_notifications') }}" class="text-decoration-none text-white">More</a>
+    </div>
+    <div class="card-body" style="overflow-y: auto;">
+      <ul class="list-unstyled mb-0 text-white">
+        {% if expiring_warranties %}
+          {% for warranty in expiring_warranties %}
+            <p>Warranty expiring for {{ warranty.asset_name }}</p>
+          {% endfor %}
+          <hr class="my-1">
+        {% endif %}
+        {% if expiring_insurances %}
+          {% for insurance in expiring_insurances %}
+            <p>Insurance expiring for {{ insurance.asset_name }} on {{ insurance.end_date }}</p>
+          {% endfor %}
+          <hr class="my-1">
+        {% endif %}
+        {% if not expiring_warranties and not expiring_insurances %}
+          <span class="d-block p-2 text-white">No notifications</span>
+        {% endif %}
+      </ul>
+    </div>
+  </div>
+
+</div>
+
+
+  </div> <!-- End row -->
+</div> <!-- End container-fluid -->
+
+{% elif session.role == 'Asset Entry Officer' %}
+<div class="content mt-4">
+  <div class="container-fluid mt-3">
+    <div class="row g-4">
+
+      <!-- Quick Actions Card (Left Side) -->
+      <div class="col-md-6">
+        <div class="card shadow-sm border-0 text-white h-100" 
+             style="background-color: #1c1c84; border-radius: 0.5rem;">
+          <div class="card-header d-flex justify-content-between">
+            <span class="fw-bold">Quick Actions</span>
+          </div>
+          <div class="card-body d-flex flex-column">
+            <p><a href="{{ url_for('add_asset') }}" class="btn btn-primary btn-lg my-2 w-100">
+              <i class="fas fa-plus-circle me-2"></i> Add Asset
+            </a></p>
+            <p><a href="{{ url_for('view_assets') }}" class="btn btn-primary btn-lg my-2 w-100">
+              <i class="fas fa-edit me-2"></i> Edit Assets
+            </a></p>
+            <p><a href="{{ url_for('extend_assignment') }}" class="btn btn-primary btn-lg my-2 w-100">
+              <i class="fas fa-clock me-2"></i> Extend Assignments
+            </a></p>
+            <p><a href="{{ url_for('add_insurance') }}" class="btn btn-primary btn-lg my-2 w-100">
+              <i class="fas fa-shield-alt me-2"></i> Add Insurance
+            </a></p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Side (col-6 with 4 cards, same style and height) -->
+<div class="col-md-6">
+  <div class="row g-3">
+
+    <!-- Top-left: Pending Requests -->
+    <div class="col-6">
+        <div class="card text-white card-custom" style="cursor:pointer; background-color: orangered; height: 200px;">
+          <div class="card-body d-flex flex-column">
+            <h5 class="card-title"><i class="fas fa-clock"></i> Pending Requests</h5>
+            <p class="card-text fs-2 mt-2">{{ pending_assets }}</p>
+            <i class="fas fa-clock bg-icon"></i>
+          </div>
+        </div>
+    </div>
+
+    <!-- Top-right: Approved Requests -->
+    <div class="col-6">
+        <div class="card text-white card-custom" style="cursor:pointer; background-color: blueviolet; height: 200px;">
+          <div class="card-body d-flex flex-column">
+            <h5 class="card-title"><i class="fas fa-thumbs-up"></i> Approved Requests</h5>
+            <p class="card-text fs-2 mt-2">{{ approved_assets }}</p>
+            <i class="fas fa-thumbs-up bg-icon"></i>
+          </div>
+        </div>
+    </div>
+
+    <!-- Bottom-left: My Pending Requests -->
+    <div class="col-6">
+      <a href="{{ url_for('view_assets', status='Pending', mine=True) }}" style="text-decoration: none;">
+        <div class="card text-dark card-custom" style="cursor:pointer; background-color: yellow; height: 200px;">
+          <div class="card-body d-flex flex-column">
+            <h5 class="card-title"><i class="fas fa-user-clock"></i> My Pending</h5>
+            <p class="card-text fs-2 mt-2">{{ my_pending_assets }}</p>
+            <i class="fas fa-user-clock bg-icon"></i>
+          </div>
+        </div>
+      </a>
+    </div>
+
+    <!-- Bottom-right: My Approved Requests -->
+    <div class="col-6">
+        <div class="card text-dark card-custom" style="cursor:pointer; background-color: orange; height: 200px;">
+          <div class="card-body d-flex flex-column ">
+            <h5 class="card-title"><i class="fas fa-user-check"></i> My Approved</h5>
+            <p class="card-text fs-2 mt-2">{{ my_approved_assets }}</p>
+            <i class="fas fa-user-check bg-icon"></i>
+          </div>
+        </div>
+      </a>
+    </div>
+
+  </div>
+</div>
+    <div class="container-fluid mt-3">
+  <div class="row g-4">
+
+    <!-- Upcoming Alerts (Left, 3 cols) -->
+    <div class="col-md-3 d-flex">
+      <div class="card shadow-sm text-white flex-fill" style="background-color: #1c1c84; border-radius: 0.5rem;">
+        <div class="card-header d-flex justify-content-between">
+          <span>Upcoming Alerts</span>
+          <a href="{{ url_for('view_notifications') }}" class="text-decoration-none text-white">More</a>
+        </div>
+        <div class="card-body" style="overflow-y: auto;">
+          <ul class="list-unstyled mb-0 text-white">
+            {% if expiring_warranties %}
+              {% for warranty in expiring_warranties %}
+                <p>Warranty expiring for {{ warranty.asset_name }} </p>
+              {% endfor %}
+              <hr class="my-1">
+            {% endif %}
+            {% if expiring_insurances %}
+              {% for insurance in expiring_insurances %}
+                <p>Insurance expiring for {{ insurance.asset_name }} on {{ insurance.end_date }}</p>
+              {% endfor %}
+              <hr class="my-1">
+            {% endif %}
+            {% if not expiring_warranties and not expiring_insurances %}
+              <span class="d-block p-2 text-white">No notifications</span>
+            {% endif %}
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- Recent Activities (Right, 9 cols) -->
+    <div class="col-md-9 d-flex">
+      <div class="card shadow-sm text-white flex-fill" style="background-color:#1c1c84;">
+        <div class="card-header">
+          <h5 class="mb-0 text-white">Recent Activities</h5>
+        </div>
+        <div class="card-body p-0" style="overflow-y: auto;">
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0 custom-table">
+              <thead>
+                <tr>
+                  <th>Activity</th>
+                  <th>Date/Time</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for activity in activities %}
+                <tr>
+                  <td style="color:white">{{ activity.message }}</td>
+                  <td style="color:white">{{ activity.time }}</td>
+                </tr>
+                {% else %}
+                <tr>
+                  <td colspan="2" class="text-center text-white">No recent activities</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+
+
+{% elif session.role == 'Technician' %}
+<div class="content mt-4">
+  <div class="container-fluid mt-3">
+    <div class="row g-4">
+
+      <!-- Quick Actions Card (Left Side) -->
+      <div class="col-md-6">
+        <div class="card shadow-sm border-0 text-white h-100" 
+             style="background-color: #1c1c84; border-radius: 0.5rem;">
+          <div class="card-header d-flex justify-content-between">
+            <span class="fw-bold">Quick Actions</span>
+          </div>
+          <div class="card-body d-flex flex-column">
+            <p><a href="{{ url_for('add_maintenance') }}" class="btn btn-primary btn-lg my-2 w-100">
+              <i class="fas fa-plus-circle me-2"></i> Add Maintenance
+            </a></p>
+            <p><a href="{{ url_for('add_monthly_maintenance') }}" class="btn btn-primary btn-lg my-2 w-100">
+              <i class="fas fa-edit me-2"></i> Add monthly Maintenance
+            </a></p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Side (col-6 with 4 cards, same style and height) -->
+<div class="col-md-6">
+  <div class="row g-3">
+
+    <!-- Bottom-left: My Pending Requests -->
+    <div class="col-6">
+      <a href="{{ url_for('view_assets', status='Pending', mine=True) }}" style="text-decoration: none;">
+        <div class="card text-light card-custom" style="cursor:pointer; background-color: orangered; height: 200px;">
+          <div class="card-body d-flex flex-column">
+            <h5 class="card-title"><i class="fas fa-user-clock"></i> My Pending Requests</h5>
+            <p class="card-text fs-2 mt-2">{{ my_pending_assets }}</p>
+            <i class="fas fa-user-clock bg-icon"></i>
+          </div>
+        </div>
+      </a>
+    </div>
+
+    <!-- Bottom-right: My Approved Requests -->
+    <div class="col-6">
+        <div class="card text-white card-custom" style="cursor:pointer; background-color: mediumvioletred; height: 200px;">
+          <div class="card-body d-flex flex-column ">
+            <h5 class="card-title"><i class="fas fa-user-check"></i> My Approved Requests</h5>
+            <p class="card-text fs-2 mt-2">{{ my_approved_assets }}</p>
+            <i class="fas fa-user-check bg-icon"></i>
+          </div>
+        </div>
+    </div>
+
+  </div>
+</div>
+    <div class="container-fluid mt-3">
+  <div class="row g-4">
+
+    <!-- Upcoming Alerts (Left, 3 cols) -->
+    <div class="col-md-3 d-flex">
+      <div class="card shadow-sm text-white flex-fill" style="background-color: #1c1c84; border-radius: 0.5rem;">
+        <div class="card-header d-flex justify-content-between">
+          <span>Upcoming Alerts</span>
+          <a href="{{ url_for('view_notifications') }}" class="text-decoration-none text-white">More</a>
+        </div>
+        <div class="card-body" style="overflow-y: auto;">
+          <ul class="list-unstyled mb-0 text-white">
+            {% if expiring_warranties %}
+              {% for warranty in expiring_warranties %}
+                <p>Warranty expiring for {{ warranty.asset_name }}</p>
+              {% endfor %}
+              <hr class="my-1">
+            {% endif %}
+            {% if expiring_insurances %}
+              {% for insurance in expiring_insurances %}
+                <p>Insurance expiring for {{ insurance.asset_name }} on {{ insurance.end_date }}</p>
+              {% endfor %}
+              <hr class="my-1">
+            {% endif %}
+            {% if not expiring_warranties and not expiring_insurances %}
+              <span class="d-block p-2 text-white">No notifications</span>
+            {% endif %}
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- Recent Activities (Right, 9 cols) -->
+    <div class="col-md-9 d-flex">
+      <div class="card shadow-sm text-white flex-fill" style="background-color:#1c1c84;">
+        <div class="card-header">
+          <h5 class="mb-0 text-white">Recent Activities</h5>
+        </div>
+        <div class="card-body p-0" style="overflow-y: auto;">
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0 custom-table">
+              <thead>
+                <tr>
+                  <th>Activity</th>
+                  <th>Date/Time</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for activity in activities %}
+                <tr>
+                  <td style="color:white">{{ activity.message }}</td>
+                  <td style="color:white">{{ activity.time }}</td>
+                </tr>
+                {% else %}
+                <tr>
+                  <td colspan="2" class="text-center text-white">No recent activities</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+{% endif %}
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
@@ -618,8 +1071,7 @@
             if (points.length) {
               const firstPoint = points[0];
               const month = maintenanceChart.data.labels[firstPoint.index];
-              
-              // Fetch real DB details for that month
+
               fetch(`/api/maintenance_details/${month}`)
                 .then(res => res.json())
                 .then(details => {
@@ -679,23 +1131,18 @@
         cell.textContent = date;
         let fullDate = `${year}-${String(month+1).padStart(2,'0')}-${String(date).padStart(2,'0')}`;
 
-        // Highlight today
         if (date === today.getDate() && month === today.getMonth() && year === today.getFullYear()) {
           cell.classList.add('today');
         }
 
-        // Get all events for this date
         let dayEvents = events.filter(ev => ev.start.split("T")[0] === fullDate);
 
         if (dayEvents.length > 0) {
           cell.classList.add('event');
-          // If only one event, use its color; if many, use neutral
           cell.style.backgroundColor = dayEvents.length === 1 ? dayEvents[0].color : "yellow";
           cell.title = dayEvents.map(ev => ev.title).join(", ");
 
-          // Show details on click
           cell.addEventListener("click", () => {
-            // Clear modal content first
             const detailsContainer = document.getElementById('eventDetails');
             detailsContainer.innerHTML = "";
 
@@ -727,7 +1174,6 @@
     calendarBody.appendChild(row);
   }
 
-  // Add modal close logic once
   document.getElementById('closeModal').onclick = function() {
     document.getElementById('eventModal').style.display = "none";
   };
@@ -758,14 +1204,12 @@
   loadEvents();
 </script>
 <script>
-  // Sidebar Toggle
   const sidebar = document.getElementById('sidebar');
   const hamburger = document.getElementById('hamburgerBtn');
   hamburger.addEventListener('click', () => {
     sidebar.classList.toggle('expanded');
   });
 
-  // Notifications Toggle
   notifBtn.addEventListener('click', function(e) {
     e.stopPropagation();
     notifDropdown.classList.toggle('active');
@@ -777,7 +1221,6 @@
     }
   });
 
-  // Category Pie Chart
   fetch("/api/category_distribution")
     .then(res => res.json())
     .then(data => {
@@ -819,20 +1262,17 @@
               const idx = activeEls[0].index;
               const category = data.labels[idx];
 
-              // Fetch assets for the clicked category
               fetch(`/api/assets_by_category?category=${encodeURIComponent(category)}`)
                 .then(res => res.json())
                 .then(assets => {
                   const modalBody = document.getElementById("modalBody");
                   const modalTitle = document.getElementById("categoryModalLabel");
 
-                  // Set modal title to clicked category
                   modalTitle.textContent = `Assets in Category: ${category}`;
 
                   if (assets.length === 0) {
                     modalBody.innerHTML = "<p>No assets found for this category.</p>";
                   } else {
-                    // Build a table
                     let html = `
                       <table class="table table-bordered table-hover sortable-table assetSearch">
                         <thead>
@@ -865,7 +1305,6 @@
                     modalBody.innerHTML = html;
                   }
 
-                  // Show the Bootstrap modal
                   const modal = new bootstrap.Modal(document.getElementById('categoryModal'));
                   modal.show();
                 });
@@ -875,7 +1314,6 @@
       });
     });
 
-  // Lifecycle Bar Chart
   fetch("/api/lifecycle_distribution")
   .then(res => res.json())
   .then(data => {
@@ -911,7 +1349,6 @@
             const index = elements[0].index;
             const lifecycleStage = data.labels[index];
 
-            // Fetch assets for the clicked lifecycle stage
             fetch(`/api/assets_by_lifecycle?stage=${encodeURIComponent(lifecycleStage.toLowerCase())}`)
               .then(res => res.json())
               .then(assets => {
@@ -947,7 +1384,6 @@
                   modalBody.innerHTML = tableHtml;
                 }
 
-                // Show the Bootstrap modal
                 const bsModal = new bootstrap.Modal(document.getElementById('assetsModal'));
                 bsModal.show();
               })
@@ -965,13 +1401,12 @@
 
 </script>
 <script>
-  // Attach sorting functionality on all tables with the class 'sortable-table'
   document.querySelectorAll('table.sortable-table').forEach(table => {
     const headers = table.querySelectorAll('th');
-    let sortDirection = Array(headers.length).fill(true); // Track ascending/descending per column
+    let sortDirection = Array(headers.length).fill(true);
 
     headers.forEach((header, index) => {
-      header.style.cursor = 'pointer'; // Indicate it's clickable
+      header.style.cursor = 'pointer';
       
       header.addEventListener('click', () => {
         const tbody = table.tBodies[0];
@@ -982,7 +1417,6 @@
           const aText = a.cells[index].textContent.trim();
           const bText = b.cells[index].textContent.trim();
 
-          // Use numeric comparison if both are numbers
           const aNum = parseFloat(aText);
           const bNum = parseFloat(bText);
 
@@ -990,19 +1424,16 @@
             return ascending ? aNum - bNum : bNum - aNum;
           }
 
-          // Fallback to localeCompare for strings
           return ascending 
             ? aText.localeCompare(bText, undefined, { numeric: true }) 
             : bText.localeCompare(aText, undefined, { numeric: true });
         });
 
-        // Clear existing rows and append sorted rows
         while (tbody.firstChild) {
           tbody.removeChild(tbody.firstChild);
         }
         rows.forEach(row => tbody.appendChild(row));
 
-        // Toggle the sorting direction for next click
         sortDirection[index] = !ascending;
       });
     });
@@ -1012,11 +1443,9 @@ document.querySelectorAll('.asset-search-input').forEach(input => {
     input.addEventListener('keyup', function() {
         const searchValue = this.value.toLowerCase();
 
-        // Find the container (modal) enclosing this input
         const modal = this.closest('.modal, .modal-dialog, .modal-content');
         if (!modal) return;
 
-        // Find all tables with class 'assetSearch' inside this modal
         const tables = modal.querySelectorAll('table.assetSearch');
 
         tables.forEach(table => {

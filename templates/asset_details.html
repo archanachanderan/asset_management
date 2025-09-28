@@ -29,7 +29,9 @@
   {% if session.role == 'Asset Manager' or session.role == 'Super Admin' %}
   <a href="{{ url_for('view_users') }}" class="nav-link" data-bs-toggle="tooltip" title="Users"><i class="fas fa-users"></i><span>Users</span></a>
   {% endif %}
+  {% if session.role == 'Super Admin' %}
   <a href="{{ url_for('view_assets') }}" class="nav-link" data-bs-toggle="tooltip" title="Assets"><i class="fas fa-boxes"></i><span>Assets</span></a>
+  {% endif %}
   <a href="{{ url_for('view_messages') }}" class="nav-link" data-bs-toggle="tooltip" title="Messages"><i class="fas fa-envelope"></i><span>Messages</span></a>
   <a href="{{ url_for('change_password') }}" class="nav-link" data-bs-toggle="tooltip" title="Change Password"><i class="fas fa-key"></i><span>Change Password</span></a>
   <a href="{{ url_for('logout') }}" class="nav-link" data-bs-toggle="tooltip" title="Logout"><i class="fas fa-sign-out-alt"></i><span>Logout</span></a>
@@ -92,7 +94,7 @@
 
   <div class="content mt-5 pt-5 p-5">
   <h1 class="text-center mb-4">Asset Details of {{ asset[1] or 'N/A'}}</h1>
-
+  {% if session.role == 'Super Admin' and asset[6] %}
   <div class="d-flex flex-wrap">
 
     <!-- General Info -->
@@ -278,16 +280,9 @@
     <a href="{{ url_for('download_asset_pdf', asset_id=asset[0]) }}" class="btn btn-danger" target="_blank">Download PDF</a>
     <a href="{{ url_for('download_qr', asset_tag=asset[7]) }}" class="btn btn-danger" target="_blank">Download QR Code</a>
     <a href="{{ url_for('view_assets') }}" class="btn btn-danger">Back To Assets</a>
-    {% if session.role == 'Asset Entry Officer' %}
-    <a href="{{ url_for('extend_assignment', asset_id=asset[0]) }}" class="btn btn-danger">Extend Assignment</a>
-    <a href="{{ url_for('add_insurance', asset_id=asset[0]) }}" class="btn btn-danger">Add Insurance</a>
-    {% endif %}
-    {% if session.role == 'Technician' and ma_records %}
-    <a href="{{ url_for('add_monthly_maintenance', asset_id=asset[0]) }}" class="btn btn-danger">Add Monthly Maintenance</a>
-    {% endif %}
   </div>
 
-  {% if session.role == 'Asset Entry Officer' and asset[6] %}
+  {% elif session.role == 'Asset Entry Officer' and asset[6] %}
 <div class="card p-3 mt-3">
   <h6 class="text-danger">Update Asset Status</h6>
   <form method="POST" action="{{ url_for('update_asset_status', asset_id=asset[0]) }}">

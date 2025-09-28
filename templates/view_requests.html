@@ -29,7 +29,9 @@
   {% if session.role == 'Asset Manager' or session.role == 'Super Admin' %}
   <a href="{{ url_for('view_users') }}" class="nav-link" data-bs-toggle="tooltip" title="Users"><i class="fas fa-users"></i><span>Users</span></a>
   {% endif %}
+  {% if session.role == 'Super Admin' %}
   <a href="{{ url_for('view_assets') }}" class="nav-link" data-bs-toggle="tooltip" title="Assets"><i class="fas fa-boxes"></i><span>Assets</span></a>
+  {% endif %}
   <a href="{{ url_for('view_messages') }}" class="nav-link" data-bs-toggle="tooltip" title="Messages"><i class="fas fa-envelope"></i><span>Messages</span></a>
   <a href="{{ url_for('change_password') }}" class="nav-link" data-bs-toggle="tooltip" title="Change Password"><i class="fas fa-key"></i><span>Change Password</span></a>
   <a href="{{ url_for('logout') }}" class="nav-link" data-bs-toggle="tooltip" title="Logout"><i class="fas fa-sign-out-alt"></i><span>Logout</span></a>
@@ -122,22 +124,36 @@
             <th>Requested By</th>
             <th>Requested Date</th>
             <th>Status</th>
+            <th>Action</th> 
           </tr>
         </thead>
         <tbody>
         {% for r in requests %}
-          <tr onclick="window.location='{{ url_for('approve_request_page', request_id=r.id) }}';" style="cursor:pointer;">
             <td>{{ r.id }}</td>
             <td>{{ r.asset_name }}</td>
             <td>{{ r.request_type }}</td>
             <td>{{ r.requested_by }}</td>
             <td>{{ r.request_date.strftime("%Y-%m-%d") }}</td>
             <td>{{ r.status }}</td>
-        {% endfor %}
-        </tbody>
-      </table>
-    </div>
-  </div>
+            <td>
+          {% if r.status.lower() == 'pending' %}
+          <form method="POST" action="{{ url_for('approve_request_page', request_id=r.id) }}">
+            <div class="d-flex gap-2">
+              <input type="hidden" name="remarks" value="">
+              <button type="submit" name="action" value="approve" class="btn btn-success btn-sm">Approve</button>
+              <button type="submit" name="action" value="reject" class="btn btn-danger btn-sm">Reject</button>
+            </div>
+          </form>
+          {% else %}
+          <span class="text-muted">{% if r.status.lower() == 'approved' %}Already Approved{% elif r.status.lower() == 'rejected' %}Already Rejected{% else %}{{ r.status }}{% endif %}</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+      
 
   <!-- Scripts -->
   <script>

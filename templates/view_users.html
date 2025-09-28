@@ -23,27 +23,17 @@
         {% endif %}
       </div>
     </div>
-    <a href="{{ url_for('dashboard') }}" class="nav-link" data-bs-toggle="tooltip" title="Dashboard">
-      <i class="fas fa-home"></i><span>Dashboard</span>
-    </a>
-    {% if session.role == 'Asset Manager' or session.role == 'Super Admin' %}
-    <a href="{{ url_for('view_users') }}" class="nav-link" data-bs-toggle="tooltip" title="Users">
-      <i class="fas fa-users"></i><span>Users</span>
-    </a>
-    {% endif %}
-    <a href="{{ url_for('view_assets') }}" class="nav-link" data-bs-toggle="tooltip" title="Assets">
-      <i class="fas fa-boxes"></i><span>Assets</span>
-    </a>
-    <a href="{{ url_for('view_messages') }}" class="nav-link" data-bs-toggle="tooltip" title="Messages">
-      <i class="fas fa-envelope"></i><span>Messages</span>
-    </a>
-    <a href="{{ url_for('change_password') }}" class="nav-link" data-bs-toggle="tooltip" title="Change Password">
-      <i class="fas fa-key"></i><span>Change Password</span>
-    </a>
-    <a href="{{ url_for('logout') }}" class="nav-link" data-bs-toggle="tooltip" title="Logout">
-      <i class="fas fa-sign-out-alt"></i><span>Logout</span>
-    </a>
-  </div>
+    <a href="{{ url_for('dashboard') }}" class="nav-link" data-bs-toggle="tooltip" title="Dashboard"><i class="fas fa-home"></i><span>Dashboard</span></a>
+  {% if session.role == 'Asset Manager' or session.role == 'Super Admin' %}
+  <a href="{{ url_for('view_users') }}" class="nav-link" data-bs-toggle="tooltip" title="Users"><i class="fas fa-users"></i><span>Users</span></a>
+  {% endif %}
+  {% if session.role == 'Super Admin' %}
+  <a href="{{ url_for('view_assets') }}" class="nav-link" data-bs-toggle="tooltip" title="Assets"><i class="fas fa-boxes"></i><span>Assets</span></a>
+  {% endif %}
+  <a href="{{ url_for('view_messages') }}" class="nav-link" data-bs-toggle="tooltip" title="Messages"><i class="fas fa-envelope"></i><span>Messages</span></a>
+  <a href="{{ url_for('change_password') }}" class="nav-link" data-bs-toggle="tooltip" title="Change Password"><i class="fas fa-key"></i><span>Change Password</span></a>
+  <a href="{{ url_for('logout') }}" class="nav-link" data-bs-toggle="tooltip" title="Logout"><i class="fas fa-sign-out-alt"></i><span>Logout</span></a>
+</div>
   <nav class="navbar navbar-expand-lg navbar-light bg-white shadow fixed-top">
     <div class="container-fluid d-flex align-items-center">
       <div class="d-flex align-items-center">

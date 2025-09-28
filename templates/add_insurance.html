@@ -29,7 +29,9 @@
   {% if session.role == 'Asset Manager' or session.role == 'Super Admin' %}
   <a href="{{ url_for('view_users') }}" class="nav-link" data-bs-toggle="tooltip" title="Users"><i class="fas fa-users"></i><span>Users</span></a>
   {% endif %}
+  {% if session.role == 'Super Admin' %}
   <a href="{{ url_for('view_assets') }}" class="nav-link" data-bs-toggle="tooltip" title="Assets"><i class="fas fa-boxes"></i><span>Assets</span></a>
+  {% endif %}
   <a href="{{ url_for('view_messages') }}" class="nav-link" data-bs-toggle="tooltip" title="Messages"><i class="fas fa-envelope"></i><span>Messages</span></a>
   <a href="{{ url_for('change_password') }}" class="nav-link" data-bs-toggle="tooltip" title="Change Password"><i class="fas fa-key"></i><span>Change Password</span></a>
   <a href="{{ url_for('logout') }}" class="nav-link" data-bs-toggle="tooltip" title="Logout"><i class="fas fa-sign-out-alt"></i><span>Logout</span></a>
@@ -103,6 +105,16 @@
   <h4 class="mb-3 text-center">Add Insurance</h4>
 
   <form method="POST">
+    <div class="mb-3">
+  <label for="asset_id" class="form-label text-white">Select Asset</label>
+  <select class="form-select" id="asset_id" name="asset_id" required>
+    <option value="">-- Select Asset --</option>
+    {% for asset in assets %}
+      <option value="{{ asset[0] }}">{{ asset[1] }}</option>
+    {% endfor %}
+  </select>
+</div>
+
     <div class="mb-2 d-flex justify-content-between align-items-center">
       <label class="fw-semibold mb-0" style="width:40%;">Policy Number</label>
       <input type="text" name="policy_number" class="form-control form-control-sm" 
@@ -146,7 +158,7 @@
     </div>
 
       <button type="submit" class="btn btn-danger">Submit</button>
-      <a href="{{ url_for('asset_details', asset_id=asset_id) }}" class="btn btn-danger">Cancel</a>
+      <a href="{{ url_for('dashboard') }}" class="btn btn-danger">Cancel</a>
     </div>
   </form>
 </div>

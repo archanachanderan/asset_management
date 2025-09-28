@@ -368,6 +368,8 @@ def view_messages():
 @app.route('/dashboard')
 @login_required
 def dashboard():
+
+    user_role = session.get("role", "employee")
     
     if 'email' not in session:
         session['email'] = current_user.email
@@ -400,6 +402,12 @@ def dashboard():
 
     cur.execute("SELECT COUNT(*) FROM requests WHERE status='Pending'")
     pending_assets = cur.fetchone()[0]
+
+    cur.execute("SELECT COUNT(*) FROM requests WHERE status='Approved'")
+    approved_assets = cur.fetchone()[0]
+
+    cur.execute("SELECT COUNT(*) FROM requests WHERE status='Rejected'")
+    rejected_assets = cur.fetchone()[0]
 
     # Fetch asset details for modal
     cur.execute("""
@@ -439,16 +447,44 @@ def dashboard():
     """)
     maintenance_records = cur.fetchall()
 
+    cur.execute("""
+    SELECT r.id, a.asset_name, r.request_type, u.name AS requested_by, r.request_date, r.status
+    FROM requests r
+    JOIN asset a ON a.id = r.asset_id
+    JOIN user_details u ON u.id = r.requested_by
+    WHERE r.status = 'Pending'
+    """)
+    requests = cur.fetchall()
+
+    cur.execute("""
+    SELECT COUNT(*) 
+    FROM requests 
+    WHERE status = 'Pending' AND requested_by = %s AND is_active = TRUE""", (session['user_id'],))
+    my_pending_assets = cur.fetchone()[0]
+
+    cur.execute("""
+    SELECT COUNT(*) 
+    FROM requests 
+    WHERE status = 'Approved' AND requested_by = %s AND is_active = TRUE
+    """, (session['user_id'],))
+    my_approved_assets = cur.fetchone()[0]
+
     cur.close()
     conn.close()
 
     return render_template(
         'dashboard.html',
+        my_approved_assets=my_approved_assets,
+        my_pending_assets=my_pending_assets,
+        requests=requests,
+        approved_assets=approved_assets,
+        rejected_assets=rejected_assets,
         pending_requests=notifications["pending_requests"],
         pending_count=len(notifications["pending_requests"]),
         expiring_warranties=notifications["expiring_warranties"],
         expiring_insurances=notifications["expiring_insurances"],
         total_users=0,
+        role=user_role,
         total_count=notifications["total_count"],
         open_maintenance=0,
         pending_approvals=0,
@@ -1312,7 +1348,10 @@ def view_assets():
     conn = get_db_connection()
     cur = conn.cursor()
     user_pending_requests = []
+    user_pending = []
     is_asset_entry_officer = current_user.has_role('Asset Entry Officer')
+    is_technician = current_user.has_role('Technician')
+
 
     notifications = get_notifications()
 
@@ -1327,6 +1366,18 @@ def view_assets():
         ORDER BY r.request_date DESC
     """, (current_user.id,))
         user_pending_requests = cur.fetchall()
+
+    if is_technician:
+        cur.execute("""
+        SELECT r.id AS request_id, r.asset_id, r.request_type, r.request_date, a.asset_name, r.assignment_id, r.insurance_id 
+        FROM requests r
+        JOIN asset a ON r.asset_id = a.id
+        WHERE r.requested_by = %s 
+          AND r.status = 'Pending' 
+          AND r.is_active = TRUE
+        ORDER BY r.request_date DESC
+    """, (current_user.id,))
+        user_pending = cur.fetchall()
         
     cur.execute("""
         SELECT a.id, a.tag, a.asset_name, c.name, a.is_active, a.purchase_date
@@ -1340,7 +1391,9 @@ def view_assets():
     return render_template(
         'view_assets.html',
         assets=assets,
+        user_pending=user_pending,
         user_pending_requests=user_pending_requests,
+        is_technician=is_technician,
         is_asset_entry_officer=is_asset_entry_officer,pending_requests=notifications["pending_requests"],pending_count=len(notifications["pending_requests"]),
         expiring_warranties=notifications["expiring_warranties"],expiring_insurances=notifications["expiring_insurances"],
         total_users=0,total_count=notifications["total_count"],open_maintenance=0,pending_approvals=0,recent_logs=[]
@@ -2229,32 +2282,41 @@ def none_if_empty(value):
     value = str(value).strip()
     return value if value != '' else None
 
-@app.route('/extend_assignment/<int:asset_id>', methods=['GET', 'POST'])
+@app.route('/extend_assignment', methods=['GET', 'POST'])
 @login_required
-def extend_assignment(asset_id):
+def extend_assignment():
     conn = get_db_connection()
     cur = conn.cursor()
 
     notifications = get_notifications()
 
-    # 1. Get the latest active or pending assignment for this asset
-    cur.execute("""
-        SELECT id, user_id, assigned_from, assigned_until, remarks, is_active
-        FROM assignments
-        WHERE asset_id = %s
-        ORDER BY id DESC
-        LIMIT 1
-    """, (asset_id,))
-    previous = cur.fetchone()
+    # Fetch all active assets for dropdown
+    cur.execute("SELECT id, asset_name FROM asset WHERE is_active = TRUE ORDER BY asset_name")
+    assets = cur.fetchall()
 
-    previous_assignment_id = previous[0] if previous else None
-    previous_user_id = previous[1] if previous else None
-
-    # 2. Get all active users for dropdown
-    cur.execute("SELECT id, name FROM user_details WHERE is_active = TRUE")
-    users = cur.fetchall()
+    previous = None
+    users = []
 
     if request.method == 'POST':
+        asset_id = request.form.get('asset_id')  # Get asset selected from dropdown
+
+        # 1. Get the latest active or pending assignment for this asset
+        cur.execute("""
+            SELECT id, user_id, assigned_from, assigned_until, remarks, is_active
+            FROM assignments
+            WHERE asset_id = %s
+            ORDER BY id DESC
+            LIMIT 1
+        """, (asset_id,))
+        previous = cur.fetchone()
+
+        previous_assignment_id = previous[0] if previous else None
+        previous_user_id = previous[1] if previous else None
+
+        # 2. Get all active users for dropdown
+        cur.execute("SELECT id, name FROM user_details WHERE is_active = TRUE")
+        users = cur.fetchall()
+
         if previous and previous[5]:  # previous[5] is is_active
             prev_until = request.form.get('previous_assigned_until') or previous[3]
             prev_remarks = request.form.get('previous_remarks') or previous[4]
@@ -2289,24 +2351,38 @@ def extend_assignment(asset_id):
         """, (next_request_id, current_user.id, asset_id, new_assignment_id))
 
         conn.commit()
+        cur.close()
+        conn.close()
+
         flash("Assignment extended successfully.", "success")
         return redirect(url_for('view_assets'))
+
+    # If GET, fetch all users for dropdown (no asset selected yet)
+    cur.execute("SELECT id, name FROM user_details WHERE is_active = TRUE")
+    users = cur.fetchall()
 
     cur.close()
     conn.close()
 
     return render_template(
-        'extend_assignment.html',pending_requests=notifications["pending_requests"],pending_count=len(notifications["pending_requests"]),
-        expiring_warranties=notifications["expiring_warranties"],expiring_insurances=notifications["expiring_insurances"],
-        total_users=0,total_count=notifications["total_count"],open_maintenance=0,pending_approvals=0,recent_logs=[],
-        previous=previous,
+        'extend_assignment.html',
+        assets=assets,  # Pass assets for dropdown
         users=users,
-        asset_id=asset_id
+        previous=previous,
+        pending_requests=notifications["pending_requests"],
+        pending_count=len(notifications["pending_requests"]),
+        expiring_warranties=notifications["expiring_warranties"],
+        expiring_insurances=notifications["expiring_insurances"],
+        total_users=0,
+        total_count=notifications["total_count"],
+        open_maintenance=0,
+        pending_approvals=0,
+        recent_logs=[]
     )
 
-@app.route('/add_insurance/<int:asset_id>', methods=['GET', 'POST'])
+@app.route('/add_insurance', methods=['GET', 'POST'])
 @login_required
-def add_insurance(asset_id):
+def add_insurance():
     if not (current_user.has_role('Asset Manager') or current_user.has_role('Asset Entry Officer')):
         return redirect(url_for('unauthorized'))
 
@@ -2314,10 +2390,14 @@ def add_insurance(asset_id):
     cur = conn.cursor()
 
     notifications = get_notifications()
-
     now = datetime.now()
 
+    # Fetch all active assets for dropdown
+    cur.execute("SELECT id, asset_name FROM asset WHERE is_active = TRUE ORDER BY asset_name")
+    assets = cur.fetchall()  # list of tuples (id, name)
+
     if request.method == 'POST':
+        asset_id = request.form['asset_id']  # get selected asset from dropdown
         policy_number = request.form['policy_number']
         provider_details = request.form['provider_details']
         provider_contact = request.form['provider_contact']
@@ -2341,10 +2421,10 @@ def add_insurance(asset_id):
                 RETURNING id
             """, (next_insurance_id, asset_id, policy_number, provider_details, provider_contact, insured_value, premium, start_date, end_date))
             insurance_id = cur.fetchone()[0]
-         
+
             cur.execute("SELECT COALESCE(MAX(id), 0) + 1 FROM requests")
             next_request_id = cur.fetchone()[0]
-           
+
             cur.execute("""
                 INSERT INTO requests (id, request_type, requested_by, asset_id, insurance_id, remarks, is_active)
                 VALUES (%s,'insurance', %s, %s, %s, %s, TRUE)
@@ -2366,31 +2446,37 @@ def add_insurance(asset_id):
 
         return redirect(url_for('asset_details', asset_id=asset_id))
 
-    # If GET, fetch the latest active insurance (for renewal auto-fill)
-    cur.execute("""
-        SELECT policy_number, provider_details, provider_contact, insured_value, end_date
-        FROM insurances
-        WHERE asset_id = %s 
-        ORDER BY end_date DESC
-        LIMIT 1
-    """, (asset_id,))
-    last_insurance = cur.fetchone()
-
+    # If GET, optionally fetch latest active insurance for all assets (for auto-fill)
+    last_insurance = None
     suggested_start = None
     suggested_end = None
-    if last_insurance and last_insurance[4]:
-        last_end_date = last_insurance[4]
-        suggested_start = last_end_date + timedelta(days=1)
-        suggested_end = suggested_start + relativedelta(years=1)
+
+    cur.execute("""
+        SELECT asset_id, policy_number, provider_details, provider_contact, insured_value, end_date
+        FROM insurances
+        WHERE is_active = TRUE
+        ORDER BY end_date DESC
+    """)
+    last_insurances = cur.fetchall()  # can be used to pre-fill per asset if needed
 
     cur.close()
     conn.close()
 
     return render_template(
-        'add_insurance.html',asset_id=asset_id,last_insurance=last_insurance,suggested_start=suggested_start,
-        suggested_end=suggested_end,pending_requests=notifications["pending_requests"],pending_count=len(notifications["pending_requests"]),
-        expiring_warranties=notifications["expiring_warranties"],expiring_insurances=notifications["expiring_insurances"],
-        total_users=0,total_count=notifications["total_count"],open_maintenance=0,pending_approvals=0,recent_logs=[]
+        'add_insurance.html',
+        assets=assets,  # list of assets for dropdown
+        last_insurance=last_insurance,
+        suggested_start=suggested_start,
+        suggested_end=suggested_end,
+        pending_requests=notifications["pending_requests"],
+        pending_count=len(notifications["pending_requests"]),
+        expiring_warranties=notifications["expiring_warranties"],
+        expiring_insurances=notifications["expiring_insurances"],
+        total_users=0,
+        total_count=notifications["total_count"],
+        open_maintenance=0,
+        pending_approvals=0,
+        recent_logs=[]
     )
 
 @app.route('/edit_insurance/<int:insurance_id>', methods=['GET', 'POST'])
@@ -2646,47 +2732,54 @@ def add_maintenance():
         total_users=0,total_count=notifications["total_count"],open_maintenance=0,pending_approvals=0,recent_logs=[]
         )
 
-@app.route('/add_monthly_maintenance/<int:asset_id>', methods=['GET', 'POST'])
+@app.route('/add_monthly_maintenance', methods=['GET', 'POST'])
 @login_required
-def add_monthly_maintenance(asset_id):
+def add_monthly_maintenance():
     conn = get_db_connection()
     cur = conn.cursor()
 
     notifications = get_notifications()
-
     now = datetime.now()
+    
+    cur.execute(""" SELECT DISTINCT a.id, a.asset_name FROM asset a JOIN maintenance m ON a.id = m.asset_id WHERE m.maintenance_type = 'Maintenance' AND m.is_active = TRUE ORDER BY a.asset_name """) 
+    assets = cur.fetchall()
 
-    # Fetch active maintenance record
-    cur.execute("""
-        SELECT id
-        FROM maintenance
-        WHERE asset_id = %s AND maintenance_type = 'Maintenance' AND is_active = TRUE
-        LIMIT 1
-    """, (asset_id,))
-    row = cur.fetchone()
-    maintenance_id = row[0] if row else None
-
-    if maintenance_id is None:
-        flash("No active maintenance record found for this asset.", "danger")
-        return redirect(url_for('asset_detail', asset_id=asset_id))
-
-    # Fetch categories for parts dropdown if needed
-    cur.execute("SELECT id, name FROM category WHERE parent_id IS NULL AND is_active = TRUE")
-    categories = cur.fetchall()
-
-    cur.execute("SELECT id, name, parent_id FROM category WHERE parent_id IS NOT NULL AND is_active = TRUE")
-    subcategories = cur.fetchall()
+    selected_asset_id = None
+    row = None
+    categories = []
+    subcategories = []
 
     if request.method == 'POST':
+        selected_asset_id = request.form.get('asset_id')  # Asset selected from dropdown
+
+        # Fetch active maintenance record for selected asset
+        cur.execute("""
+            SELECT id
+            FROM maintenance
+            WHERE asset_id = %s AND maintenance_type = 'Maintenance' AND is_active = TRUE
+            LIMIT 1
+        """, (selected_asset_id,))
+        row = cur.fetchone()
+        maintenance_id = row[0] if row else None
+
+        if maintenance_id is None:
+            flash("No active maintenance record found for this asset.", "danger")
+            return redirect(url_for('add_monthly_maintenance'))
+
+        # Fetch categories for parts dropdown if needed
+        cur.execute("SELECT id, name FROM category WHERE parent_id IS NULL AND is_active = TRUE")
+        categories = cur.fetchall()
+        cur.execute("SELECT id, name, parent_id FROM category WHERE parent_id IS NOT NULL AND is_active = TRUE")
+        subcategories = cur.fetchall()
+
+        # --- Rest of your POST logic ---
         maintenance_date = request.form['maintenance_date']
         remarks = request.form.get('remarks')
         serviced_by = request.form['serviced_by']
         has_parts_involved = bool(request.form.get('has_parts_involved'))
 
         part_id = None
-        now = datetime.now()
 
-        # --- Insert part if involved ---
         if has_parts_involved:
             part_name = request.form.get('part_name')
             part_description = request.form.get('part_description')
@@ -2700,25 +2793,20 @@ def add_monthly_maintenance(asset_id):
             vendor_phone = request.form.get('vendor_phone')
             vendor_address = request.form.get('vendor_address')
 
-            # Generate unique tag
             cur.execute("SELECT tag FROM asset WHERE tag LIKE 'SVE-%' ORDER BY id DESC LIMIT 1")
             last_tag_row = cur.fetchone()
             next_number = int(last_tag_row[0].split('-')[1]) + 1 if last_tag_row else 1
             tag = f"SVE-{next_number:06d}"
 
-            # Insert part
             cur.execute("""
                 INSERT INTO asset (asset_name, description, category_id, purchase_date, purchase_cost,
                                    is_active, created_at, updated_at, tag, remarks, parent_asset_id)
                 VALUES (%s,%s,%s,%s,%s,FALSE,%s,%s,%s,%s,%s)
                 RETURNING id
-            """, (
-                part_name, part_description, part_subcategory_id, part_purchase_date,
-                part_purchase_cost, now, now, tag, part_remarks, asset_id
-            ))
+            """, (part_name, part_description, part_subcategory_id, part_purchase_date,
+                  part_purchase_cost, now, now, tag, part_remarks, selected_asset_id))
             part_id = cur.fetchone()[0]
 
-            # Vendor and warranty
             cur.execute("""
                 INSERT INTO vendors (name, email, phone, address, is_active, asset_id)
                 VALUES (%s,%s,%s,%s,TRUE,%s)
@@ -2746,51 +2834,52 @@ def add_monthly_maintenance(asset_id):
 
             cur.execute("SELECT COALESCE(MAX(id), 0) + 1 FROM requests")
             next_request_id = cur.fetchone()[0]
-
             cur.execute("""
-            INSERT INTO requests (id, request_type, requested_by, asset_id, status)
-            VALUES (%s, 'add', %s, %s ,'Pending')
-        """, (next_request_id, current_user.id, part_id))
+                INSERT INTO requests (id, request_type, requested_by, asset_id, status)
+                VALUES (%s, 'add', %s, %s ,'Pending')
+            """, (next_request_id, current_user.id, part_id))
 
-        # --- Insert monthly maintenance as inactive/pending ---
+        # Insert monthly maintenance as inactive/pending
         cur.execute("""
             INSERT INTO monthly_maintenance (
                 maintenance_id, asset_id, part_id, maintenance_date,
                 remarks, serviced_by, has_parts_involved, is_active
             ) VALUES (%s,%s,%s,%s,%s,%s,%s,TRUE)
-        """, (
-            maintenance_id, asset_id, part_id, maintenance_date,
-            remarks, serviced_by, has_parts_involved
-        ))
+        """, (maintenance_id, selected_asset_id, part_id, maintenance_date,
+              remarks, serviced_by, has_parts_involved))
 
         cur.execute("SELECT COALESCE(MAX(id), 0) + 1 FROM requests")
         next_request_id = cur.fetchone()[0]
-        
         cur.execute("""
             INSERT INTO requests (id, request_type, requested_by, asset_id, status)
             VALUES (%s, 'maintenance', %s, %s, 'Pending')
-        """, (next_request_id, current_user.id, asset_id))
+        """, (next_request_id, current_user.id, selected_asset_id))
 
         conn.commit()
         cur.close()
         conn.close()
 
         flash("Monthly Maintenance added successfully and pending approval!", "success")
-        return redirect(url_for('asset_details', asset_id=asset_id))
+        return redirect(url_for('add_monthly_maintenance'))
 
     cur.close()
     conn.close()
+
     return render_template('add_monthly_maintenance.html',
-                           asset_id=asset_id, row=row,
-                           categories=categories,pending_requests=notifications["pending_requests"],
-        pending_count=len(notifications["pending_requests"]),
-        expiring_warranties=notifications["expiring_warranties"],
-        expiring_insurances=notifications["expiring_insurances"],
-        total_users=0,
-        total_count=notifications["total_count"],
-        open_maintenance=0,
-        pending_approvals=0,
-        recent_logs=[],subcategories=subcategories)
+                           assets=assets,
+                           asset_id=None,
+                           row=row,
+                           categories=categories,
+                           subcategories=subcategories,
+                           pending_requests=notifications["pending_requests"],
+                           pending_count=len(notifications["pending_requests"]),
+                           expiring_warranties=notifications["expiring_warranties"],
+                           expiring_insurances=notifications["expiring_insurances"],
+                           total_users=0,
+                           total_count=notifications["total_count"],
+                           open_maintenance=0,
+                           pending_approvals=0,
+                           recent_logs=[])
 
 @app.route("/update_asset_status/<int:asset_id>", methods=["POST"])
 @login_required
