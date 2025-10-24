@@ -78,7 +78,7 @@ def allowed_file(filename):
     
 @app.route('/')
 def welcome():
-    return render_template('welcome.html')
+    return render_template('index.html')
 
 # --- Dummy function to fetch user from DB ---
 def get_user_by_email(email):
@@ -2916,7 +2916,7 @@ def update_asset_status(asset_id):
 
 @app.route('/')
 def index():
-    return render_template('welcome.html')
+    return render_template('index.html')
 
 @app.route('/contact_us')
 def contact_us():
